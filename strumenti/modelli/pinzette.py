@@ -1,7 +1,7 @@
 """
 La Bottega - pinzette (tweezers). Set 1, tool 5 (R5: hold on the spring, carry it to its seat).
 Run: /opt/blender/blender -b -P pinzette.py -- [--no-render] [--samples N]
-Held pose: tips down at the origin, joint up along three.js +Y, arms open along X (8 mm gap).
+Held pose: tips down at the origin, joint up along three.js +Y, arms open along X (7 mm gap between the tips).
 Nodes: pinzette (root, origin = between the tips = grab point) > braccio_sx, braccio_dx
 (pivot at the joint). Close: braccio_sx.rotation.z = +CHIUSURA, braccio_dx.rotation.z = -CHIUSURA,
 CHIUSURA = 0.033 rad (tips touch).
@@ -14,13 +14,16 @@ TOP = 0.118
 
 def arm(name, side):
     s = side
-    st = [(0.000, s * 0.0042, 0.0007, 0.0014), (0.006, s * 0.0048, 0.0009, 0.0024),
-          (0.030, s * 0.0062, 0.0009, 0.0034), (0.060, s * 0.0066, 0.0009, 0.0038),
-          (0.095, s * 0.0045, 0.0009, 0.0038), (TOP, s * 0.0016, 0.0010, 0.0038)]
-    a = loft(name, st, "argento", chamfer=0.3)
+    # correzioni PR #4: silhouette x1.5 (arm width 7.6 -> 11.4 mm, strip 1.8 -> 2.7 mm, outer spread
+    # 15 -> 22.5 mm). The inner edge of the tips (3.5 mm from the axis) and the joint stay where they
+    # were, so the pivots and CHIUSURA = 0.033 rad are unchanged.
+    st = [(0.000, s * 0.00455, 0.00105, 0.0021), (0.006, s * 0.00525, 0.00135, 0.0036),
+          (0.030, s * 0.0090, 0.00135, 0.0051), (0.060, s * 0.0099, 0.00135, 0.0057),
+          (0.095, s * 0.0068, 0.00135, 0.0057), (TOP, s * 0.0021, 0.0015, 0.0057)]
+    a = loft(name, st, "acciaio_chiaro", chamfer=0.3)     # #C9BFB4 on bottega_metallo (metal 0.4)
     grip = {p.index for p in a.data.polygons if 0.032 < p.center.z < 0.072 and p.center.x * s > 0}
     paint(a, "miele", as_mat="metallo", faces=grip)    # gilded grip band, same draw call
-    cap = box("cap", (0.0026, 0.0078, 0.010), 0.0008, "argento", 1, loc=(s * 0.0013, 0, TOP - 0.003))
+    cap = box("cap", (0.0039, 0.0117, 0.010), 0.0010, "acciaio_chiaro", 1, loc=(s * 0.00195, 0, TOP - 0.003))
     join(a, [cap])
     set_origin(a, (s * 0.0016, 0, TOP - 0.004))
     return a

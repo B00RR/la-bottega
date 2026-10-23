@@ -2,7 +2,8 @@
 La Bottega - cacciavite a croce (Phillips screwdriver). Set 1, tool 2 (B7, B11).
 Run: /opt/blender/blender -b -P cacciavite.py -- [--no-render] [--samples N]
 Held pose: tip down at the origin, handle up along three.js +Y. Origin = Phillips tip on the
-shaft axis, so rotation.y spins it in place on the screw. 2 primitives: handle (opaco), shaft (metallo).
+shaft axis, so rotation.y spins it in place on the screw.
+Correzioni PR #4: shaft painted acciaio_chiaro #C9BFB4 on bottega_metallo (metal 0.4). 2 primitives: handle (opaco), shaft (metallo).
 """
 import bpy, math, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -12,8 +13,8 @@ def build():
     new_scene()
     root = empty("cacciavite", size=0.04)
     shaft = lathe("corpo_cacciavite", [
-        (0.0, 0.0, "argento"), (0.0016, 0.0035, "argento"), (0.0030, 0.0090, "argento"),
-        (0.0030, 0.072, "argento"), (0.0, 0.072, "argento")], seg=8, smooth_angle=50)
+        (0.0, 0.0, "acciaio_chiaro"), (0.0016, 0.0035, "acciaio_chiaro"), (0.0030, 0.0090, "acciaio_chiaro"),
+        (0.0030, 0.072, "acciaio_chiaro"), (0.0, 0.072, "acciaio_chiaro")], seg=8, smooth_angle=50)
     # Phillips flutes: four shallow notches on the tip cone (vertex nudge on the 2nd ring)
     for v in shaft.data.vertices:
         if 0.002 < v.co.z < 0.005:

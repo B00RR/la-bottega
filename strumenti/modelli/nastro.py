@@ -32,6 +32,7 @@ def build():
         v.co.z -= 0.25 * max(0.0, v.co.x) ** 1.0 * 0.6
     join(tape, [core, tail])
     smooth(tape, 50)
+    ao(tape, -HH - 0.0004, 0.007)   # correzioni PR #4: vertex AO -14% at the base of the roll
     parent_keep(tape, root)
     return root
 
