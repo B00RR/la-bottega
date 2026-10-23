@@ -18,9 +18,9 @@ const INQUADRATURE = {
   'DETTAGLIO-CODA': { nodo: 'macchia', dist: 0.42, alza: 0.06 },
   'DETTAGLIO-VITE': { nodo: 'vite', dist: 0.34, alza: 0.04 },
   'DETTAGLIO-TAPPO-APERTO': { nodo: 'contatto', dist: 0.48, alza: 0.08 },
-  TELECOMANDO: { nodo: 'tasto_on', dist: 0.42, alza: 0.72 },
-  'TC-RETRO': { nodo: 'fessura_a', dist: 0.22, alza: 0.5, lato: -0.4 },
-  'TC-INTERNO': { nodo: 'filo', dist: 0.3, alza: 0.58 },
+  TELECOMANDO: { nodo: 'tasto_on', dist: 0.48, alza: 0.78 },
+  'TC-RETRO': { nodo: 'fessura_a', anche: 'fessura_b', peso: 0.5, dist: 0.42, alza: 0.78, lato: -0.62 },
+  'TC-INTERNO': { nodo: 'filo', anche: 'sede_molla', peso: 0.48, dist: 0.46, alza: 0.82 },
 };
 
 function easeInOutSine(t) {
@@ -557,6 +557,13 @@ export class Scena {
     this.scene.updateMatrixWorld(true);
     const nodo = this.nodo(shot.nodo) || this.torcia;
     nodo.getWorldPosition(this._v);
+    if (shot.anche) {
+      const altro = this.nodo(shot.anche);
+      if (altro) {
+        altro.getWorldPosition(this._v2);
+        this._v.lerp(this._v2, shot.peso ?? 0.5);
+      }
+    }
     const dest = new THREE.Vector3(this._v.x + (shot.lato || 0), this._v.y + shot.alza, this._v.z + shot.dist);
     const guarda = this._v.clone();
     if (vuoleCassetto) {
