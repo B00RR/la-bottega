@@ -195,7 +195,8 @@ test.describe('accettazione', () => {
           const carta = document.querySelector('#taccuino').getBoundingClientRect();
           const chiudi = document.querySelector('#chiudi-taccuino').getBoundingClientRect();
           const timbro = document.querySelector('.timbro-pagina').getBoundingClientRect();
-          const pina = document.querySelector('#taccuino .pina').getBoundingClientRect();
+          const nodoPina = document.querySelector('#taccuino .pina');
+          const pina = nodoPina.getBoundingClientRect();
           const sta = (r) => r.width > 8 && r.height > 8
             && r.left >= carta.left - 1 && r.right <= carta.right + 1
             && r.top >= carta.top + 4 && r.bottom <= carta.bottom - 4;
@@ -204,7 +205,7 @@ test.describe('accettazione', () => {
           return {
             chiudi: sta(chiudi),
             timbro: sta(timbro) && timbro.bottom <= pina.top + 2,
-            pina: sta(pina) && pina.bottom <= chiudi.top - 2 && pina.textContent.includes('Pina'),
+            pina: sta(pina) && pina.bottom <= chiudi.top - 2 && nodoPina.textContent.includes('Pina'),
             stacco: !tocca(timbro, chiudi) && !tocca(pina, chiudi),
           };
         });
@@ -217,10 +218,16 @@ test.describe('accettazione', () => {
   });
 
   test('T16 la zona calda non si disegna senza debug', async ({ page }) => {
+    await page.addInitScript(() => {
+      const salto = sessionStorage.getItem('salto-passo');
+      if (!salto) return;
+      localStorage.setItem('la-bottega:salvataggio', salto);
+      sessionStorage.removeItem('salto-passo');
+    });
     await prepara(page);
     const nascosta = async (indice, id) => {
       await page.evaluate((i) => {
-        localStorage.setItem('la-bottega:salvataggio', JSON.stringify({
+        sessionStorage.setItem('salto-passo', JSON.stringify({
           versione: 2,
           indice: i,
           linea: 0,
