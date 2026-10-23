@@ -186,12 +186,16 @@ export function creaBottega() {
   barattolo.position.set(0.46, 1.08, -0.48);
   const vasoAttesa = aggiungi(mesh('sfera', [0.032, 8, 6], '#e7d27a'));
   vasoAttesa.position.set(0.62, 1.08, -0.48);
-  const stipiteS = aggiungi(mesh('scatola', [0.06, 0.7, 0.06], '#a86b3a'));
+  const fascia = aggiungi(mesh('scatola', [0.72, 0.46, 0.02], '#e8b79c'));
+  fascia.position.set(0.18, 0.1, -0.52);
+  const stipiteS = mesh('scatola', [0.06, 0.7, 0.06], '#a86b3a');
+  stipiteS.name = 'stipite_sx';
   stipiteS.position.set(-0.28, 0.4, 0.72);
   const stipiteD = stipiteS.clone();
+  stipiteD.name = 'stipite_dx';
   stipiteD.position.x = 0.28;
-  statici.push(stipiteD);
-  const architrave = aggiungi(mesh('scatola', [0.62, 0.06, 0.06], '#a86b3a'));
+  const architrave = mesh('scatola', [0.62, 0.06, 0.06], '#a86b3a');
+  architrave.name = 'architrave';
   architrave.position.set(0, 0.76, 0.72);
   const vaso = aggiungi(mesh('cilindro', [0.03, 0.024, 0.05, 6], '#c4623a'));
   vaso.position.set(0.42, 0.08, -0.02);
@@ -210,15 +214,18 @@ export function creaBottega() {
 
   const tv = nominato('Tv', new THREE.Group());
   tv.position.set(0.34, 0.72, -0.42);
-  const scocca = mesh('scatola', [0.22, 0.16, 0.04], '#5a4a40');
+  const scocca = mesh('scatola', [0.22, 0.16, 0.04], '#6b4e3d');
   const tela = document.createElement('canvas');
   tela.width = 64;
   tela.height = 40;
+  const gessoTv = tela.getContext('2d');
+  gessoTv.fillStyle = '#5a4a40';
+  gessoTv.fillRect(0, 0, 64, 40);
   const texture = new THREE.CanvasTexture(tela);
   texture.colorSpace = THREE.SRGBColorSpace;
   const schermo = nominato('Schermo', new THREE.Mesh(
     new THREE.PlaneGeometry(0.18, 0.12),
-    pittura('#3c291c', { unico: true, mappa: texture, emissive: '#3c291c' }),
+    pittura('#ffffff', { unico: true, mappa: texture, emissive: '#3c291c', intensita: 0.3 }),
   ));
   schermo.position.z = 0.022;
   schermo.userData.tela = tela;
@@ -239,6 +246,7 @@ export function creaBottega() {
 
   return {
     statica: unisci(statici),
+    stipiti: [stipiteS, stipiteD, architrave],
     vassoio,
     cassetto,
     soglia,

@@ -8,7 +8,7 @@ import { montaTorcia, posaTappo } from './torcia.js';
 const POSE_TORCIA = {
   banco: new THREE.Vector3(0, 0.08, 0.02),
   spinta: new THREE.Vector3(0, 0.08, 0.07),
-  lato: new THREE.Vector3(0.32, 0.08, 0.06),
+  lato: new THREE.Vector3(-0.35, 0.08, -0.3),
 };
 
 const APERTURA_GUSCIO = 160 * Math.PI / 180;
@@ -54,7 +54,9 @@ export class Scena {
     this.renderer.toneMappingExposure = 1.05;
     this.renderer.setClearColor('#f4d2c0', 1);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.shadowMap.autoUpdate = false;
+    this.renderer.shadowMap.needsUpdate = true;
     this.dprMassimo = Math.min(window.devicePixelRatio || 1, 1.5);
     this.dpr = this.dprMassimo;
     this.tempi = [];
@@ -73,8 +75,8 @@ export class Scena {
     this.sole = new THREE.DirectionalLight('#ffd59a', 2.45);
     this.sole.position.set(1.1, 2.6, 1.8);
     this.sole.castShadow = true;
-    this.sole.shadow.mapSize.set(1024, 1024);
-    this.sole.shadow.radius = 4;
+    this.sole.shadow.mapSize.set(512, 512);
+    this.sole.shadow.radius = 2;
     this.sole.shadow.bias = -0.0004;
     this.sole.shadow.normalBias = 0.04;
     const campo = this.sole.shadow.camera;
@@ -86,7 +88,9 @@ export class Scena {
     campo.bottom = -1.5;
     this.taglio = new THREE.DirectionalLight('#fff6ea', 0.8);
     this.taglio.position.set(-1.5, 1.6, -1.2);
-    this.scene.add(this.hemi, this.sole, this.sole.target, this.taglio);
+    this.orlo = new THREE.PointLight('#fff6ea', 2.6, 0.7, 2);
+    this.orlo.position.set(-0.02, 0.58, -0.62);
+    this.scene.add(this.hemi, this.sole, this.sole.target, this.taglio, this.orlo);
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     this.scene.environmentIntensity = 0.35;
@@ -94,7 +98,7 @@ export class Scena {
 
     this.nodi = new Map();
     const bottega = creaBottega();
-    this.scene.add(bottega.statica, bottega.vassoio, bottega.cassetto, bottega.soglia, bottega.tv, bottega.ombra);
+    this.scene.add(bottega.statica, ...bottega.stipiti, bottega.vassoio, bottega.cassetto, bottega.soglia, bottega.tv, bottega.ombra);
     this.torcia = new THREE.Group();
     this.torcia.name = 'Torcia';
     this.modelloTorcia = new THREE.Group();
@@ -134,6 +138,10 @@ export class Scena {
     this.camera.lookAt(this.guardaDa);
     this._v = new THREE.Vector3();
     this._v2 = new THREE.Vector3();
+    this._rayDa = new THREE.Vector3();
+    this._rayA = new THREE.Vector3();
+    this.raycaster = new THREE.Raycaster();
+    this._ombre = 3;
     this.tempo = 0;
     this.trascinati = new Map();
     this.viteVolata = false;
@@ -180,6 +188,7 @@ export class Scena {
       }
       this.reindicizza();
       this.preparaOmbre();
+      this.ritratto = this.catturaEttore();
       return info;
     } catch {
       this.reindicizza();
@@ -227,6 +236,7 @@ export class Scena {
   aggiornaOmbraOggetto(vista) {
     const prossimo = vista?.telecomando?.visibile ? this.telecomando : this.torcia;
     if (prossimo === this.oggettoOmbra) return;
+    this._ombre = Math.max(this._ombre, 2);
     if (this.casterOggetto) this.casterOggetto.castShadow = false;
     this.casterOggetto = this.scegliCaster(prossimo, false);
     this.oggettoOmbra = prossimo;
@@ -268,6 +278,7 @@ export class Scena {
     mesh.visible = false;
     mesh.name = 'Fascio';
     mesh.frustumCulled = false;
+    mesh.raycast = () => {};
     return mesh;
   }
 
@@ -282,6 +293,7 @@ export class Scena {
       depthWrite: false,
       sizeAttenuation: true,
     }));
+    points.raycast = () => {};
     const vite = Array.from({ length: 64 }, () => ({ vita: 0, vel: new THREE.Vector3() }));
     return { points, posizioni, vite, geometria };
   }
@@ -399,7 +411,14 @@ export class Scena {
     const tappo = this.nodo('tappo');
     const vite = this.nodo('vite');
     const parcheggia = (t.pulizia || 0) >= 0.98 && (t.tappo || 0) > 0.85;
-    if (tappo) posaTappo(tappo, vite, t.tappo || 0, t.giri || 0, parcheggia);
+    if (tappo) {
+      posaTappo(tappo, vite, t.tappo || 0, t.giri || 0, parcheggia);
+      if (parcheggia && tappo.parent) {
+        tappo.parent.updateWorldMatrix(true, false);
+        const sulPanno = tappo.parent.worldToLocal(this._rayA.set(-0.12, 0.045, 0.12));
+        tappo.position.copy(sulPanno);
+      }
+    }
     this.coloriOssido(t.pulizia || 0, t.macchia || 0);
     const bottone = this.nodo('bottone');
     if (bottone) bottone.position.z = (bottone.userData.baseZ ?? 0.044) - (t.bottone || 0) * 0.002;
@@ -517,11 +536,13 @@ export class Scena {
     }
 
     this.tv.visible = (vista.tv || 0) > 0;
+    const dettaglio = this.shot === 'TELECOMANDO' || this.shot === 'TC-RETRO' || this.shot === 'TC-INTERNO';
+    this.fascio.material.opacity = dettaglio ? 0.15 : 0.35;
     this.fascio.visible = Boolean(t.accesa && this.vetro);
     if (t.accesa && this.vetro) {
-      const origine = this.vetro.getWorldPosition(this._v);
-      const facciaNodo = this.ettore?.getObjectByName?.('occhi') || this.nodo('testa_ettore');
-      const faccia = facciaNodo?.getWorldPosition(this._v2) || this.ettore.position;
+      const origine = this.vetro.localToWorld(this._v.set(0, 0.251, 0));
+      const facciaNodo = this.ettore?.getObjectByName?.('occhi') || this.ettore?.getObjectByName?.('testa');
+      const faccia = facciaNodo ? facciaNodo.getWorldPosition(this._v2) : this.ettore.position;
       const dist = Math.max(0.35, origine.distanceTo(faccia));
       this.fascio.position.copy(origine).lerp(faccia, 0.5);
       this.fascio.lookAt(faccia);
@@ -608,9 +629,9 @@ export class Scena {
   }
 
   posaNelVassoio(nodo, x) {
-    if (this.vassoio && nodo.parent !== this.vassoio) this.vassoio.add(nodo);
-    nodo.scale.set(1, 1, 1);
-    nodo.position.set(x, 0.02, 0.01);
+    if (nodo.parent !== this.scene) this.scene.add(nodo);
+    nodo.scale.setScalar(1.35);
+    nodo.position.set(-0.22, 0.045, 0.04 + x);
     nodo.quaternion.set(0, 0, -Math.SQRT1_2, Math.SQRT1_2);
     nodo.visible = true;
   }
@@ -749,11 +770,12 @@ export class Scena {
       ? new THREE.Vector3(guarda.x + shot.ox, guarda.y + shot.oy, guarda.z + shot.oz)
       : new THREE.Vector3(this._v.x + (shot.lato || 0), this._v.y + (shot.alza || 0), this._v.z + (shot.dist || 1));
     if (shot.fisso === 'banco' && !vuoleCassetto) {
-      const base = this.torcia.position;
-      // +0.32 m a destra: Ettore (giornale alzato compreso) resta nel ritratto
-      // e il bottone resta nella zona calda.
-      guarda.set(base.x + 0.14, base.y - 0.13, base.z - 0.18);
-      dest.set(base.x + 0.14, base.y + 1.09, base.z + 2.0);
+      // Ancorata al banco, non alla torcia: a chiusura la torcia è di lato
+      // e non deve trascinare lo stipite nel quadro. Lo sguardo è basso,
+      // così l'architrave resta sopra il ritratto.
+      const base = POSE_TORCIA.banco;
+      guarda.set(base.x + 0.12, base.y - 0.1, base.z - 0.12);
+      dest.set(base.x - 0.04, base.y + 0.8, base.z + 1.5);
     }
     if (vuoleCassetto) {
       guarda.set(0.04, 0.1, 0.08);
@@ -850,6 +872,13 @@ export class Scena {
     v.ettore.mano = smussa(v.ettore.mano, m.ettore.mano, dt, 8);
     v.ettore.strizza = smussa(v.ettore.strizza, m.ettore.strizza, dt, 8);
     if (this.regia) {
+      if (!this._ritrattoProvato) {
+        this._ritrattoProvato = true;
+        if (!this.ritratto) {
+          this.ritratto = this.catturaEttore();
+          this._onRitratto?.(this.ritratto);
+        }
+      }
       const mosso = this.regia.aggiorna(dt, v);
       if (this.regia.allineata && this._vuoleAbbassa) {
         this.regia.abbassa();
@@ -908,6 +937,10 @@ export class Scena {
     }
     const mosso = !this.cameraFerma() || !this.oggettiFermi() || this.particelle.vite.some((p) => p.vita > 0);
     if (mosso) this.sporco = true;
+    if (this._ombre > 0 || !this.oggettiFermi()) {
+      this.renderer.shadowMap.needsUpdate = true;
+      if (this._ombre > 0) this._ombre -= 1;
+    }
     return this.sporco;
   }
 
@@ -938,7 +971,173 @@ export class Scena {
     const materiale = this.schermo.material;
     materiale.color.set('#ffffff');
     materiale.emissive.set(accesa ? '#ffffff' : '#3c291c');
-    materiale.emissiveIntensity = accesa ? 1 : 0.2;
+    materiale.emissiveIntensity = accesa ? 1 : 0.3;
+  }
+
+  catturaEttore() {
+    const testa = this.ettore?.getObjectByName?.('testa') || this.ettore?.getObjectByName?.('coppola');
+    if (!testa) {
+      console.warn('ritratto: osso della testa assente');
+      return '';
+    }
+    const altri = this.scene.children.filter((n) => n !== this.ettore && !n.isLight);
+    const stati = altri.map((n) => n.visible);
+    const fondo = this.scene.background;
+    const nebbia = this.scene.fog;
+    const rt = new THREE.WebGLRenderTarget(120, 120);
+    const buf = new Uint8Array(120 * 120 * 4);
+    try {
+      this.ettore.updateWorldMatrix(true, true);
+      const cam = new THREE.PerspectiveCamera(22, 1, 0.05, 4);
+      const centro = new THREE.Vector3();
+      testa.getWorldPosition(centro);
+      centro.y += 0.04;
+      cam.position.copy(centro).add(new THREE.Vector3(0.18, 0.06, 0.32));
+      cam.lookAt(centro);
+      cam.updateProjectionMatrix();
+      altri.forEach((n) => { n.visible = false; });
+      this.scene.background = new THREE.Color('#f4d2c0');
+      this.scene.fog = null;
+      const ombre = this.renderer.shadowMap.needsUpdate;
+      this.renderer.shadowMap.needsUpdate = true;
+      this.renderer.setRenderTarget(rt);
+      this.renderer.render(this.scene, cam);
+      this.renderer.readRenderTargetPixels(rt, 0, 0, 120, 120, buf);
+      this.renderer.setRenderTarget(null);
+      this.renderer.shadowMap.needsUpdate = ombre;
+      let pieni = 0;
+      for (let i = 0; i < buf.length; i += 16) {
+        if (buf[i + 3] > 0 && (Math.abs(buf[i] - 244) > 18 || Math.abs(buf[i + 1] - 210) > 18)) pieni += 1;
+      }
+      if (pieni < 8) {
+        console.warn('ritratto: fotogramma vuoto');
+        return '';
+      }
+      const tela = document.createElement('canvas');
+      tela.width = 120;
+      tela.height = 120;
+      const ctx = tela.getContext('2d');
+      const immagine = ctx.createImageData(120, 120);
+      for (let y = 0; y < 120; y += 1) {
+        immagine.data.set(buf.subarray((119 - y) * 480, (120 - y) * 480), y * 480);
+      }
+      ctx.putImageData(immagine, 0, 0);
+      const url = tela.toDataURL('image/png');
+      const medaglione = document.querySelector('#medaglione');
+      if (medaglione) medaglione.style.backgroundImage = `url("${url}")`;
+      return url;
+    } catch (err) {
+      console.warn('ritratto', err);
+      return '';
+    } finally {
+      this.renderer.setRenderTarget(null);
+      this.scene.background = fondo;
+      this.scene.fog = nebbia;
+      altri.forEach((n, i) => { n.visible = stati[i]; });
+      rt.dispose();
+    }
+  }
+
+  ostacoli(bersaglio) {
+    const problemi = [];
+    const nodo = bersaglio ? this.nodo(bersaglio) : null;
+    if (nodo) {
+      const chi = this.primoOstacolo(nodo);
+      if (chi) problemi.push(chi);
+    }
+    if (this.shot === 'BANCO' && !this._miraCassetto) {
+      for (const nome of ['stipite_sx', 'stipite_dx', 'architrave']) {
+        if (this.nelQuadro(nome)) problemi.push(nome);
+      }
+    }
+    return problemi.join(',');
+  }
+
+  primoOstacolo(nodo) {
+    nodo.updateWorldMatrix(true, false);
+    nodo.getWorldPosition(this._rayA);
+    this._rayDa.copy(this.camera.position);
+    const dir = this._rayA.clone().sub(this._rayDa);
+    const dist = dir.length();
+    if (dist < 0.04) return '';
+    this.raycaster.set(this._rayDa, dir.multiplyScalar(1 / dist));
+    this.raycaster.far = dist - 0.02;
+    const colpi = this.raycaster.intersectObject(this.scene, true);
+    const radice = this.radiceSoggetto(nodo);
+    for (const colpo of colpi) {
+      const mesh = colpo.object;
+      if (!mesh.visible || !mesh.isMesh) continue;
+      if (this.eDelSoggetto(mesh, radice) || this.eIgnorato(mesh)) continue;
+      return mesh.name || mesh.parent?.name || 'mesh';
+    }
+    return '';
+  }
+
+  radiceSoggetto(nodo) {
+    let corrente = nodo;
+    while (corrente) {
+      if (corrente === this.torcia || corrente === this.telecomando || corrente === this.ettore || corrente.name === 'banco') {
+        return corrente;
+      }
+      corrente = corrente.parent;
+    }
+    return nodo;
+  }
+
+  eDelSoggetto(mesh, radice) {
+    let corrente = mesh;
+    while (corrente) {
+      if (corrente === radice) return true;
+      corrente = corrente.parent;
+    }
+    return false;
+  }
+
+  eIgnorato(mesh) {
+    const nome = mesh.name || '';
+    if (nome === 'Fascio' || nome === 'pedana' || nome === 'Ombra' || nome === 'anello') return true;
+    if (nome.includes('segno') || nome.startsWith('freccia')) return true;
+    let corrente = mesh;
+    while (corrente) {
+      if (corrente.name?.startsWith('attrezzo_')) return true;
+      corrente = corrente.parent;
+    }
+    return false;
+  }
+
+  nelQuadro(nome) {
+    const nodo = this.nodo(nome);
+    if (!nodo) return false;
+    const box = new THREE.Box3().setFromObject(nodo);
+    if (box.isEmpty()) return false;
+    const w = this.canvas.clientWidth || window.innerWidth;
+    const h = this.canvas.clientHeight || window.innerHeight;
+    const angoli = [
+      [box.min.x, box.min.y, box.min.z], [box.min.x, box.min.y, box.max.z],
+      [box.min.x, box.max.y, box.min.z], [box.min.x, box.max.y, box.max.z],
+      [box.max.x, box.min.y, box.min.z], [box.max.x, box.min.y, box.max.z],
+      [box.max.x, box.max.y, box.min.z], [box.max.x, box.max.y, box.max.z],
+    ];
+    const dentro = (x, y, z) => {
+      const p = this._v.set(x, y, z).project(this.camera);
+      const sx = (p.x * 0.5 + 0.5) * w;
+      const sy = (-p.y * 0.5 + 0.5) * h;
+      return p.z > -1 && p.z < 1 && sx > 0 && sx < w && sy > 0 && sy < h;
+    };
+    for (let i = 0; i < angoli.length; i += 1) {
+      for (let j = i + 1; j < angoli.length; j += 1) {
+        const a = angoli[i];
+        const b = angoli[j];
+        let diversi = 0;
+        for (let k = 0; k < 3; k += 1) if (a[k] !== b[k]) diversi += 1;
+        if (diversi !== 1) continue;
+        for (let s = 0; s <= 8; s += 1) {
+          const u = s / 8;
+          if (dentro(a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u)) return true;
+        }
+      }
+    }
+    return false;
   }
 
   proietta(nome) {

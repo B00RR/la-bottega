@@ -177,6 +177,31 @@ test.describe('accettazione', () => {
     expect((await leggi(page)).progresso).toBeCloseTo(prima, 2);
   });
 
+  test('T15 niente occlusori sul soggetto e niente UI sovrapposta', async ({ page }) => {
+    for (const id of ['b4-bottone', 'b6-lente', 'b8-pennello', 'b10-pile-dentro', 'r1-on', 'r3-leva', 'r5-pinze', 'r8-tv', 'chiusura']) {
+      await prepara(page, `?debug=zone&passo=${id}`);
+      await attendiPasso(page, id);
+      if (id === 'b4-bottone') await expect(page.locator('#cartoncino')).toBeHidden();
+      if (id === 'chiusura') {
+        await page.waitForFunction(() => {
+          const n = document.querySelector('#cartello');
+          const r = n.getBoundingClientRect();
+          return n.textContent === 'Domani' && r.height > 8 && r.top >= 0 && r.bottom <= window.innerHeight;
+        });
+        await page.waitForTimeout(900);
+        const quadro = await page.locator('#app').getAttribute('data-quadro');
+        expect(quadro, id).toBe('');
+        const dentro = await page.evaluate(() => {
+          const carta = document.querySelector('#taccuino').getBoundingClientRect();
+          const chiudi = document.querySelector('#chiudi-taccuino').getBoundingClientRect();
+          return chiudi.left >= carta.left && chiudi.right <= carta.right
+            && chiudi.top >= carta.top && chiudi.bottom <= carta.bottom;
+        });
+        expect(dentro).toBe(true);
+      }
+    }
+  });
+
   test('T9 dpr, triangoli e disegni restano nel budget', async ({ page }) => {
     await prepara(page);
     const box = page.viewportSize();

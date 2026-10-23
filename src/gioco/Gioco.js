@@ -103,8 +103,10 @@ export class Gioco {
     this.ascolta();
     this.ui.safe(this.parametri.get('safeTop'), this.parametri.get('safeBottom'));
     if (this.debugCorr) this.coda.push('corr.1', 'corr.2', 'corr.3', 'corr.nuda', 'corr.calma');
+    this.scena._onRitratto = (url) => this.ui.ritratto?.(url);
     this.scena.prontaGlb.then(() => {
       this.torciaPronta = true;
+      this.ui.ritratto?.(this.scena.ritratto);
       this.applicaProgresso();
       if (this.passo.tipo !== 'saracinesca') this.preparaPasso(this.progressoGesto > 0.02 || this.parziali.length > 0);
       this.pubblica();
@@ -1074,6 +1076,13 @@ export class Gioco {
     const ingombro = this.scena.ingombroEttore();
     if (ingombro) app.dataset.ettore = JSON.stringify(ingombro);
     else delete app.dataset.ettore;
+    if (this.torciaPronta) {
+      const ui = this.ui.sovrapposizioni();
+      if (ui.split(',').includes('bolla')) this._bollaCoperta = 'bolla';
+      const scena = this.fermo ? this.scena.ostacoli(p.bersaglio) : '';
+      app.dataset.quadro = [scena, ui].filter(Boolean).join(',');
+      app.dataset.bollaCoperta = this._bollaCoperta || '';
+    }
     if (this.torciaPronta) app.dataset.pronto = '1';
   }
 }

@@ -26,8 +26,14 @@
       #saracinesca {
         position: fixed; inset: 0; z-index: 30; background:
           repeating-linear-gradient(#d29a62 0 6px, #e8b07a 6px 7px, #b57442 7px 14px);
+        box-shadow: inset 0 0 0 24px #9a5f38;
         display: flex; align-items: flex-end; justify-content: center;
         transition: none; touch-action: none;
+      }
+      #vetrina {
+        position: absolute; top: 22%; left: 40px; width: 64px; height: 88px;
+        border: 8px solid #fff6ea; background: #fff6ea66;
+        box-shadow: inset 0 0 0 3px #9a5f38; pointer-events: none;
       }
       #lama {
         position: absolute; left: 8%; right: 8%; bottom: -6px; height: 14px;
@@ -50,10 +56,12 @@
         background: #f4d2c0; color: #3c291c; font-weight: 900; font-size: 28px;
       }
       #maniglia {
-        width: 72px; height: 22px; margin-bottom: calc(28px + var(--safe-bottom));
-        background: #f0b86e; border-radius: 11px; box-shadow: 0 3px 0 #9a5f38;
+        width: 168px; height: 52px; margin-bottom: calc(28px + var(--safe-bottom));
+        background: #f0b86e; border-radius: 26px; box-shadow: 0 3px 0 #9a5f38;
+        display: flex; align-items: center; justify-content: center;
+        font: 800 18px Nunito, "Trebuchet MS", sans-serif; color: #3c291c;
       }
-      #gesso { position: absolute; bottom: 18%; font: 800 42px Nunito, sans-serif; color: #fff6ea; }
+      #gesso { position: absolute; bottom: 22%; margin: 0; line-height: 0; }
     </style>
   </head>
   <body>
@@ -62,8 +70,13 @@
       <div id="saracinesca">
         <div id="lama"></div>
         <p id="cartello"><span class="nome">La Bottega</span><span class="sotto">riparazioni</span></p>
-        <p id="gesso" hidden>↑</p>
-        <div id="maniglia"></div>
+        <div id="vetrina" aria-hidden="true"></div>
+        <p id="gesso" hidden>
+          <svg viewBox="0 0 48 64" width="36" height="48" aria-hidden="true">
+            <path d="M24 58 V12 M24 12 L12 26 M24 12 L36 26" fill="none" stroke="#fff6ea" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </p>
+        <div id="maniglia">Alza</div>
       </div>
       <div id="chi-parla">
         <div id="medaglione" aria-hidden="true"></div>

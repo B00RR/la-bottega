@@ -115,6 +115,9 @@ export async function attendiPasso(page, id) {
     throw new Error(`atteso ${id}, ora ${s.id} (fermo ${s.fermo}, bolla «${s.bolla}»)`, { cause: errore });
   }
   await page.waitForFunction(() => document.querySelector('#app').dataset.fermo === '1', null, { timeout: 20000 });
+  const quadro = await page.locator('#app').getAttribute('data-quadro');
+  const coperta = await page.locator('#app').getAttribute('data-bolla-coperta');
+  if (quadro || coperta) throw new Error(`quadro su ${id}: ${quadro || coperta}`);
 }
 
 export async function puntatore(page, punti, mouse) {

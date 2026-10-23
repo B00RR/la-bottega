@@ -2,12 +2,12 @@ import { t } from '../dati/testi.js';
 
 const ORDINE = ['lente', 'cacciavite', 'pennello', 'leva', 'pinzette', 'nastro'];
 const ICONE = {
-  lente: '<circle cx="16" cy="16" r="8" fill="none" stroke="#3c291c" stroke-width="2.4"/><circle cx="16" cy="16" r="5" fill="#d7ecf2" fill-opacity="0.7"/><path d="M22 22 l7 7" stroke="#c4844e" stroke-width="3" stroke-linecap="round"/>',
-  cacciavite: '<path d="M10 30 L22 12" stroke="#c4844e" stroke-width="3.2" stroke-linecap="round"/><path d="M18 8 h10 l-2 6 h-8 z" fill="#c9bfb4" stroke="#3c291c" stroke-width="1.4"/>',
-  pennello: '<path d="M12 32 L22 14" stroke="#9a5f38" stroke-width="3.2" stroke-linecap="round"/><path d="M16 6 h12 v8 h-12 z" fill="#e8977c" stroke="#3c291c" stroke-width="1.4"/>',
-  leva: '<path d="M6 28 L26 8" stroke="#c9bfb4" stroke-width="4" stroke-linecap="round"/><path d="M6 28 L12 22" stroke="#3c291c" stroke-width="4" stroke-linecap="round"/>',
-  pinzette: '<path d="M12 6 L18 22 L24 6" fill="none" stroke="#c9bfb4" stroke-width="3" stroke-linecap="round"/><path d="M16 18 L18 26 L20 18" fill="none" stroke="#3c291c" stroke-width="2"/>',
-  nastro: '<circle cx="18" cy="18" r="9" fill="none" stroke="#f0b86e" stroke-width="4"/><circle cx="18" cy="18" r="3" fill="#3c291c"/>',
+  lente: '<circle cx="14" cy="14" r="10" fill="#b7dfe6" stroke="#3c291c" stroke-width="2.5"/><circle cx="14" cy="14" r="5" fill="#f4efe4"/><path d="M21 21 L31 31" stroke="#c4844e" stroke-width="4.5" stroke-linecap="round"/>',
+  cacciavite: '<path d="M7 31 L19 15" stroke="#c4844e" stroke-width="5" stroke-linecap="round"/><path d="M15 6 h16 l-3 9 h-13 z" fill="#d9dde2" stroke="#3c291c" stroke-width="2.5" stroke-linejoin="round"/>',
+  pennello: '<path d="M9 32 L19 16" stroke="#9a5f38" stroke-width="5" stroke-linecap="round"/><path d="M12 4 h16 v13 h-16 z" fill="#e8977c" stroke="#3c291c" stroke-width="2.5"/>',
+  leva: '<path d="M5 31 L29 7" stroke="#c9bfb4" stroke-width="6" stroke-linecap="round"/><path d="M5 31 L14 22" stroke="#3c291c" stroke-width="6" stroke-linecap="round"/>',
+  pinzette: '<path d="M8 4 L18 24 L28 4" fill="none" stroke="#c9bfb4" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 18 L18 30 L22 18" fill="#d9dde2" stroke="#3c291c" stroke-width="2.5" stroke-linejoin="round"/>',
+  nastro: '<circle cx="18" cy="18" r="13" fill="#f0b86e" stroke="#3c291c" stroke-width="2.5"/><circle cx="18" cy="18" r="4.5" fill="#3c291c"/>',
 };
 
 export class Interfaccia {
@@ -180,7 +180,7 @@ export class Interfaccia {
         if (this.giaDisegnato && !prima.has(id)) bottone.classList.add('nuovo');
         bottone.dataset.strumento = id;
         bottone.setAttribute('aria-label', id);
-        bottone.innerHTML = `<svg viewBox="0 0 40 40" width="28" height="28" aria-hidden="true">${ICONE[id] || ''}</svg>`;
+        bottone.innerHTML = `<svg viewBox="0 0 36 36" width="36" height="36" aria-hidden="true">${ICONE[id] || ''}</svg>`;
         bottone.addEventListener('pointerdown', (e) => e.stopPropagation());
         bottone.addEventListener('pointerup', (e) => {
           e.stopPropagation();
@@ -273,12 +273,82 @@ export class Interfaccia {
   fine(visibile) {
     this.azioni.hidden = !visibile;
     this.cassetta.classList.toggle('via', visibile);
+    this.app.classList.toggle('fine', visibile);
   }
 
   paesaggio(attivo) {
     this.paesaggioEl.hidden = !attivo;
   }
 
+  ritrato(url) {
+    if (!url) return;
+    const nodo = this.app.querySelector('#medaglione');
+    if (nodo) nodo.style.backgroundImage = `url("${url}")`;
+  }
+
+  /** Rettangoli visibili che si toccano, testo della bolla coperto, Chiudi fuori carta. */
+  sovrapposizioni() {
+    const sel = ['#bolla', '#chi-parla', '#ingranaggio', '#cassetta', '#cartoncino', '#taccuino', '#impostazioni', '#azioni', '#continua', '#rigioca', '#chiudi-taccuino', '#cartello'];
+    const visi = [];
+    for (const id of sel) {
+      const el = this.app.querySelector(id);
+      if (!el || !visibileSu(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) continue;
+      if (r.bottom < 2 || r.top > window.innerHeight - 2) continue;
+      visi.push({ id, el, r });
+    }
+    const problemi = [];
+    for (let i = 0; i < visi.length; i += 1) {
+      for (let j = i + 1; j < visi.length; j += 1) {
+        const a = visi[i];
+        const b = visi[j];
+        if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+        if (area(a.r, b.r) > 16) problemi.push(`${a.id.slice(1)}~${b.id.slice(1)}`);
+      }
+    }
+    const taccuino = this.taccuino;
+    const chiudi = this.app.querySelector('#chiudi-taccuino');
+    if (visibileSu(taccuino) && visibileSu(chiudi)) {
+      const t = taccuino.getBoundingClientRect();
+      const c = chiudi.getBoundingClientRect();
+      if (c.left < t.left + 4 || c.right > t.right - 4 || c.top < t.top + 4 || c.bottom > t.bottom - 4) {
+        problemi.push('chiudi');
+      }
+    }
+    if (visibileSu(this.bollaEl) && this.rigaEl.textContent) {
+      const range = document.createRange();
+      range.selectNodeContents(this.rigaEl);
+      const b = this.bollaEl.getBoundingClientRect();
+      for (const r of range.getClientRects()) {
+        if (r.width < 1) continue;
+        if (r.left < b.left - 1 || r.right > b.right + 1 || r.top < b.top - 1 || r.bottom > b.bottom + 1) {
+          problemi.push('bolla');
+          break;
+        }
+        const sopra = document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+        if (sopra && sopra !== this.bollaEl && !this.bollaEl.contains(sopra)) {
+          problemi.push('bolla');
+          break;
+        }
+      }
+    }
+    return problemi.join(',');
+  }
+
+}
+
+function visibileSu(el) {
+  if (!el || el.hidden) return false;
+  const stile = getComputedStyle(el);
+  return stile.display !== 'none' && stile.visibility !== 'hidden';
+}
+
+function area(a, b) {
+  const x = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+  const y = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+  if (x <= 0 || y <= 0) return 0;
+  return x * y;
 }
 
 function nomeDelPunto(gioco) {
