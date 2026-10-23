@@ -108,7 +108,12 @@ export async function punto(page, nome) {
 }
 
 export async function attendiPasso(page, id) {
-  await page.waitForFunction((atteso) => document.querySelector('#app').dataset.passo === atteso, id, { timeout: 20000 });
+  try {
+    await page.waitForFunction((atteso) => document.querySelector('#app').dataset.passo === atteso, id, { timeout: 20000 });
+  } catch (errore) {
+    const s = await leggi(page);
+    throw new Error(`atteso ${id}, ora ${s.id} (fermo ${s.fermo}, bolla «${s.bolla}»)`, { cause: errore });
+  }
   await page.waitForFunction(() => document.querySelector('#app').dataset.fermo === '1', null, { timeout: 20000 });
 }
 
@@ -151,11 +156,20 @@ export async function tieni(page, p, ms, mouse) {
 export async function strumento(page, id, mouse) {
   const slot = page.locator(`[data-strumento="${id}"]`);
   await slot.waitFor({ state: 'visible', timeout: 8000 });
-  const box = await slot.boundingBox();
   const { w, h } = schermo(page);
-  visibile({ x: box.x + box.width / 2, y: box.y + box.height / 2 }, w, h, id);
-  await puntatore(page, [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }], mouse);
-  await page.waitForFunction((atteso) => document.querySelector('#app').dataset.strumento === atteso, id, { timeout: 5000 });
+  let ultimo = null;
+  for (let i = 0; i < 3; i += 1) {
+    const box = await slot.boundingBox();
+    visibile({ x: box.x + box.width / 2, y: box.y + box.height / 2 }, w, h, id);
+    await puntatore(page, [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }], mouse);
+    try {
+      await page.waitForFunction((atteso) => document.querySelector('#app').dataset.strumento === atteso, id, { timeout: 2500 });
+      return;
+    } catch (errore) {
+      ultimo = errore;
+    }
+  }
+  throw ultimo;
 }
 
 function cerchio(cx, cy, r, senso, giri) {
@@ -192,13 +206,38 @@ export async function ettoreNelRitratto(page) {
   }
 }
 
+async function tocca(page, nome, mouse) {
+  const id = (await leggi(page)).id;
+  let ultimo = null;
+  for (let i = 0; i < 4; i += 1) {
+    const p = await punto(page, nome);
+    await puntatore(page, [p], mouse);
+    try {
+      await page.waitForFunction((atteso) => document.querySelector('#app').dataset.passo !== atteso, id, { timeout: 8000 });
+      return;
+    } catch (errore) {
+      ultimo = errore;
+    }
+  }
+  throw ultimo;
+}
+
 export async function giocaTutorial(page, { mouse, prefisso }) {
   const { w, h } = schermo(page);
-  await puntatore(page, [{ x: w / 2, y: h * 0.72 }], mouse);
+  const alza = { x: w / 2, y: h * 0.72 };
+  for (let i = 0; i < 3; i += 1) {
+    await puntatore(page, [alza], mouse);
+    try {
+      await page.waitForFunction(() => document.querySelector('#app').dataset.passo !== 'b1-saracinesca', null, { timeout: 5000 });
+      break;
+    } catch (errore) {
+      if (i === 2) throw errore;
+    }
+  }
   await attendiPasso(page, 'b4-bottone');
   await ettoreNelRitratto(page);
   await shot(page, `${prefisso}-bottone`);
-  await puntatore(page, [await punto(page, 'bottone')], mouse);
+  await tocca(page, 'bottone', mouse);
   await attendiPasso(page, 'b5-gira');
   await finche(page, 'b5-gira', mouse, async () => {
     const c = await punto(page, 'centro_torcia');
@@ -257,7 +296,7 @@ export async function giocaTutorial(page, { mouse, prefisso }) {
   await shot(page, `${prefisso}-luce`);
   await attendiPasso(page, 'r1-on');
   await shot(page, `${prefisso}-telecomando`);
-  await puntatore(page, [await punto(page, 'tasto_on')], mouse);
+  await tocca(page, 'tasto_on', mouse);
   await attendiPasso(page, 'r2-gira');
   await finche(page, 'r2-gira', mouse, async () => {
     const c = await punto(page, 'centro_telecomando');
@@ -307,7 +346,7 @@ export async function giocaTutorial(page, { mouse, prefisso }) {
     await puntatore(page, [a, b], mouse);
   });
   await attendiPasso(page, 'r8-tv');
-  await puntatore(page, [await punto(page, 'tasto_on')], mouse);
+  await tocca(page, 'tasto_on', mouse);
   await page.waitForTimeout(500);
   await shot(page, `${prefisso}-tv`);
   await attendiPasso(page, 'chiusura');

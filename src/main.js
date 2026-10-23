@@ -46,6 +46,7 @@ timer.connect(document);
 scena.renderer.setAnimationLoop((tempo) => {
   timer.update(tempo);
   const crudo = timer.getDelta();
+  gioco.dtParete = Math.min(crudo, 2);
   gioco.dtLente = Math.min(crudo, 0.45);
   const dt = Math.min(crudo, 0.1);
   let dirty = false;

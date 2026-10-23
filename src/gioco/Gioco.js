@@ -139,19 +139,19 @@ export class Gioco {
     this.audio.sblocca();
     const x = e.clientX;
     const y = e.clientY;
-    if (this.bolla && this.ui.sopraBolla(x, y)) {
+    if (this.bolla && this.ui.sopraBolla(x, y) && !(this.passo.tipo === 'gesto' && this.sulBersaglio(x, y))) {
       this.toccaBolla();
       return;
     }
     this.premuto = true;
-    this.down = { x, y, t: ora() };
+    this.down = { x, y, t: Number.isFinite(e.timeStamp) ? e.timeStamp : ora() };
     this.ultimo = { x, y };
     this.gestoAmmesso = false;
     this.erroreSensoGesto = 0;
     this.sensoSegnato = false;
     this.dettoSenso = false;
     if (this.passo.tipo === 'saracinesca' && this.apertura < 1) {
-      this.shDown = { x, y, t: ora() };
+      this.shDown = { x, y, t: Number.isFinite(e.timeStamp) ? e.timeStamp : ora() };
       return;
     }
     if (!this.fermo || this.celebrando > 0) {
@@ -186,16 +186,18 @@ export class Gioco {
     if (!this.premuto) return;
     const x = e.clientX;
     const y = e.clientY;
+    const segno = Number.isFinite(e.timeStamp) ? e.timeStamp : ora();
     this.premuto = false;
     if (this.shDown && !this.shutterAuto && this.passo.tipo === 'saracinesca') {
-      const dt = ora() - this.shDown.t;
+      const dt = segno - this.shDown.t;
       const dist = Math.hypot(x - this.shDown.x, y - this.shDown.y);
-      if (eTap(dt, dist) || this.apertura >= 0.4) this.chiudiSaracinesca();
+      // Un dito fermo apre anche se il fotogramma arriva in ritardo: non è un bottone.
+      if (eTap(dt, dist) || dist <= gesti.tap.px || this.apertura >= 0.4) this.chiudiSaracinesca();
       this.shDown = null;
     }
     if (this.attesa) {
       this.codaPunti.push({ x, y });
-      this.rilascioInAttesa = { x, y };
+      this.rilascioInAttesa = { x, y, t: segno };
       return;
     }
     if (this.ignora) {
@@ -203,7 +205,7 @@ export class Gioco {
       this.memorizza();
       return;
     }
-    this.rilascia(x, y);
+    this.rilascia(x, y, segno);
     this.memorizza();
   }
 
@@ -216,7 +218,7 @@ export class Gioco {
     this.codaPunti = [];
     this.rilascioInAttesa = null;
     if (su) {
-      this.rilascia(su.x, su.y);
+      this.rilascia(su.x, su.y, su.t);
       this.memorizza();
     }
   }
@@ -329,25 +331,29 @@ export class Gioco {
       this.pubblica();
       return false;
     }
+    const vivo = this.dtLente || dt;
+    const adesso = performance.now();
+    const muro = this._muro == null ? 0 : Math.min(2, (adesso - this._muro) / 1000);
+    this._muro = adesso;
+    const parete = Math.max(this.dtParete || 0, muro, vivo);
     if (this.passo.tipo === 'saracinesca') {
-      this.shutterT += dt;
+      this.shutterT += parete;
       this.ui.gesso(this.shutterT > 2.5 && !this.shutterAuto);
       if (this.shutterAuto && this.apertura < 1) {
-        this.apertura = Math.min(1, this.apertura + dt * 1.35);
+        this.apertura = Math.min(1, this.apertura + parete * 1.35);
         if (this.apertura >= 1 && this.torciaPronta) this.completaShutter();
       }
     } else if (this.passo.tipo === 'fine' && this.apertura > 0.5) {
-      this.apertura = Math.max(0.5, this.apertura - dt * 0.45);
+      this.apertura = Math.max(0.5, this.apertura - parete * 0.45);
     }
     this.ui.saracinesca(this.apertura, this.torciaPronta);
 
-    const vivo = this.dtLente || dt;
     if (this.torciaPronta && this.passo.tipo === 'blocco') {
       if (!this.ettoreAbbassato && this.bloccoT >= 0.35 && (this.passo.eventi || []).some((ev) => ev.spinta)) {
         this.ettoreAbbassato = true;
         this.scena.ettoreAbbassa();
       }
-      this.bloccoT += dt;
+      this.bloccoT += parete;
       for (const ev of this.passo.eventi || []) {
         if (this.bloccoT >= ev.a && !this.eventiFatti.has(ev.a)) {
           this.eventiFatti.add(ev.a);
@@ -390,7 +396,7 @@ export class Gioco {
         this.ui.apriPina();
       }
       if (this.intro && !this.bolla && this.coda.length === 0 && !this.fine2) {
-        this.finePausa += vivo;
+        this.finePausa += parete;
         if (this.finePausa > 0.8 && this.passo.dopoPausa) {
           this.fine2 = true;
           this.accoda([this.passo.dopoPausa]);
@@ -400,7 +406,7 @@ export class Gioco {
 
     const tieneLuce = this.passoCompletato && this.passo.grande === 'torcia' && (this.bolla || this.coda.length > 0);
     if (this.celebrando > 0) {
-      this.celebrando -= vivo;
+      this.celebrando -= parete;
       if (this.celebrando <= 0 && !tieneLuce) this.avanza();
     } else if (this.passoCompletato && this.passo.grande === 'torcia' && !tieneLuce) {
       this.avanza();
@@ -417,8 +423,9 @@ export class Gioco {
     }
     this.mollaTilt(dt);
     this.aiuti();
-    this.bolle(vivo);
-    const dirty = this.scena.aggiorna(dt, this.vista, this.immediato);
+    const paga = this.passoCompletato && this.passo.grande === 'torcia';
+    this.bolle(this.celebrando > 0 || paga ? parete : dt);
+    const dirty = this.scena.aggiorna(Math.min(parete, 0.45), this.vista, this.immediato);
     this.immediato = new Set();
     if (this.strumento === 'lente' && this.premuto && this.ultimo) {
       const mondo = this.scena.mondoDaSchermo(this.ultimo.x, this.ultimo.y + gesti.lente.offsetY, 0.12);
@@ -463,19 +470,20 @@ export class Gioco {
     this.memorizzaPresto();
   }
 
-  rilascia(x, y) {
+  rilascia(x, y, segno) {
     const p = this.passo;
     if (p.tipo !== 'gesto' || this.celebrando > 0) {
       this.preso = null;
       return;
     }
-    if (p.gesto === 'tap') this.rilasciaTap(x, y);
+    if (p.gesto === 'tap') this.rilasciaTap(x, y, segno);
     if (p.gesto === 'gira') this.vista[p.quale === 'telecomando' ? 'telecomando' : 'torcia'].tilt = 0;
     if (p.gesto === 'estrai') this.rilasciaEstrai(x, y);
     if (p.gesto === 'inserisci') this.rilasciaInserisci(x, y);
     if (p.gesto === 'pinza') this.rilasciaPinza(x, y);
     if (p.gesto === 'chiudi') this.rilasciaChiudi(x, y);
-    if (p.gesto === 'strofina' && this.down && eTap(ora() - this.down.t, Math.hypot(x - this.down.x, y - this.down.y))) {
+    const durata = (segno || ora()) - (this.down ? this.down.t : segno || ora());
+    if (p.gesto === 'strofina' && this.down && eTap(durata, Math.hypot(x - this.down.x, y - this.down.y))) {
       this.tapContatto += 1;
       this.audio.toc();
       if (p.erroreTap && this.tapContatto >= p.erroreTap.dalla) this.errore(p.erroreTap.testo);
@@ -505,8 +513,12 @@ export class Gioco {
     return false;
   }
 
-  rilasciaTap(x, y) {
-    if (!this.down || !eTap(ora() - this.down.t, Math.hypot(x - this.down.x, y - this.down.y))) return;
+  rilasciaTap(x, y, segno) {
+    if (!this.down) return;
+    const durata = (segno || ora()) - this.down.t;
+    const dist = Math.hypot(x - this.down.x, y - this.down.y);
+    // Il dito è rimasto sul punto: è un tap anche se il fotogramma ha tardato.
+    if (!eTap(durata, dist) && dist > gesti.tap.px) return;
     if (this.passo.strumento && this.strumento !== this.passo.strumento) return;
     const area = this.passo.area || gesti.tap.area;
     if (this.vicino(this.passo.bersaglio, x, y, area / 2)) {
@@ -930,13 +942,17 @@ export class Gioco {
 
   bolle(dt) {
     if (!this.bolla) {
+      if (this.consecutive >= 2 && this.coda.length > 0) this.consecutive = 0;
       this.mostraBolla();
       if (this.debugCorr && !this.bolla && this.coda.length === 0) this.corrOk = true;
       return;
     }
     const passo = this.bolla.testo.length / Math.max(0.4, this.bolla.durata * 0.55);
-    if (!this.bolla.ferma) this.bolla.caratteri = Math.min(this.bolla.testo.length, this.bolla.caratteri + passo * dt);
-    this.bolla.eta -= dt;
+    const ditoFermo = this.premuto && !this.passoCompletato;
+    if (!this.bolla.ferma) {
+      this.bolla.caratteri = Math.min(this.bolla.testo.length, this.bolla.caratteri + passo * dt);
+    }
+    if (!ditoFermo) this.bolla.eta -= dt;
     if (this.bolla.eta <= 0) this.chiudiBolla();
   }
 
