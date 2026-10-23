@@ -5,6 +5,8 @@ Personaggio originale per La Bottega, modellato con uno script Blender 4.2 (`str
 roughness 0.62, metalness 0). Colori e AO (−14 % sotto la coppola, sul collo e sotto le braccia) sono nei vertici
 (`COLOR_0`). Non ci sono texture né UV.
 
+- Palette di Ettore: camicia #6F9E88 e colletto/polsini #5F8E78 (piu' scura della salvia #8FBFA8 di torcia e panno), pelle e naso #EBC3A6 (colori base, prima dell'AO -14 %).
+
 | | |
 |---|---|
 | Triangoli | **5 996** (budget Ettore ≤ 6 000) |
