@@ -701,8 +701,8 @@ export class Scena {
       dest.set(base.x - 0.18, base.y + 1.09, base.z + 2.0);
     }
     if (vuoleCassetto) {
-      guarda.set(0.26, 0.06, 0.02);
-      dest.set(0.08, 0.92, 1.45);
+      guarda.set(0.04, 0.1, 0.08);
+      dest.set(0.04, 1.45, 3.33);
     }
     distanzaMinima(dest, guarda);
     if (!this.visuale) this.visuale = clona(vistaFinale);
