@@ -3,17 +3,11 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 /**
- * Contratto per i GLB (un file in /modelli/<id>.glb).
- * Ogni parte animata è un Object3D con questi nomi: l'origine del nodo è il perno.
- * Se il file non c'è, restano le mesh procedurali. `import.meta.glob` non fa richieste a vuoto.
+ * I GLB stanno in public/modelli/, nomi snake_case.
+ * Scala di tutto il set: 1.35. Se un file manca, resta la mesh procedurale.
  */
-export const PARTI = {
-  torcia: ['Corpo', 'Testa', 'Vetro', 'Bottone', 'Tappo', 'Macchia', 'Vite', 'Contatto', 'PilaA', 'PilaB', 'PilaNuovaA', 'PilaNuovaB'],
-  telecomando: ['Corpo', 'Guscio', 'TastoOn', 'FessuraA', 'FessuraB', 'Filo', 'Rame', 'Molla', 'SedeMolla', 'Nastro'],
-  ettore: ['Corpo', 'Testa', 'Giornale', 'Cappello', 'Mano'],
-};
+export const SCALA = 1.35;
 
-const disponibili = import.meta.glob('../../modelli/*.glb', { query: '?url', import: 'default' });
 const cache = new Map();
 
 export function pittura(colore, extra = {}) {
@@ -78,123 +72,6 @@ function unisci(meshes) {
     radice.add(new THREE.Mesh(geometria, materiale));
   }
   return radice;
-}
-
-function etichettaAnno() {
-  const tela = document.createElement('canvas');
-  tela.width = 128;
-  tela.height = 64;
-  const ctx = tela.getContext('2d');
-  ctx.fillStyle = '#5d6a3e';
-  ctx.fillRect(0, 0, 128, 64);
-  ctx.fillStyle = '#1c2410';
-  ctx.font = '700 42px Georgia, serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('2019', 64, 34);
-  const texture = new THREE.CanvasTexture(tela);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
-}
-
-const anno = etichettaAnno();
-
-function pila(colore, nome, conAnno) {
-  const g = nominato(nome, new THREE.Group());
-  const corpo = mesh('cilindro', [0.013, 0.013, 0.046, 6], colore);
-  corpo.rotation.z = Math.PI / 2;
-  const polo = mesh('cilindro', [0.006, 0.006, 0.008, 6], '#d5d8dc');
-  polo.rotation.z = Math.PI / 2;
-  polo.position.x = 0.026;
-  g.add(corpo, polo);
-  if (conAnno) {
-    const etichetta = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.03, 0.016),
-      pittura('#5d6a3e', { unico: true, mappa: anno, emissive: '#5d6a3e' }),
-    );
-    etichetta.rotation.y = -Math.PI / 2;
-    etichetta.position.set(-0.008, 0.012, 0);
-    etichetta.name = `${nome}Anno`;
-    g.add(etichetta);
-  }
-  return g;
-}
-
-export function creaTorcia() {
-  const g = nominato('Torcia', new THREE.Group());
-  const corpo = nominato('Corpo', mesh('cilindro', [0.03, 0.03, 0.15, 6], '#c4623a'));
-  corpo.rotation.z = Math.PI / 2;
-  const testa = nominato('Testa', mesh('cilindro', [0.038, 0.036, 0.042, 6], '#8d929a'));
-  testa.rotation.z = Math.PI / 2;
-  testa.position.x = 0.09;
-  const vetro = nominato('Vetro', mesh('cilindro', [0.026, 0.026, 0.012, 6], '#ffe7b0', { unico: true, emissive: '#ffd59a' }));
-  vetro.rotation.z = Math.PI / 2;
-  vetro.position.x = 0.116;
-  vetro.material.emissiveIntensity = 0;
-
-  const bottone = nominato('Bottone', new THREE.Group());
-  bottone.position.set(0.015, 0, 0.034);
-  const tasto = mesh('cilindro', [0.012, 0.012, 0.01, 6], '#f4efe4');
-  tasto.rotation.x = Math.PI / 2;
-  bottone.add(tasto);
-
-  const tappo = nominato('Tappo', new THREE.Group());
-  tappo.position.set(-0.078, 0, 0);
-  const tappoMesh = mesh('cilindro', [0.032, 0.032, 0.028, 6], '#a87848');
-  tappoMesh.rotation.z = Math.PI / 2;
-  tappoMesh.position.x = -0.012;
-  const macchia = nominato('Macchia', mesh('sfera', [0.01, 6, 5], '#6e8b4e', { unico: true, emissive: '#9bb86a' }));
-  macchia.position.set(-0.028, 0.016, 0.012);
-  macchia.material.emissiveIntensity = 0.15;
-
-  const vite = nominato('Vite', new THREE.Group());
-  vite.position.set(-0.03, 0, 0);
-  const testaVite = mesh('cilindro', [0.012, 0.012, 0.006, 6], '#e4e7eb');
-  testaVite.rotation.z = Math.PI / 2;
-  const croceA = mesh('scatola', [0.004, 0.016, 0.003], '#f7f8f8');
-  const croceB = mesh('scatola', [0.004, 0.003, 0.016], '#f7f8f8');
-  croceA.position.x = -0.004;
-  croceB.position.x = -0.004;
-  const anello = nominato('Anello', new THREE.Mesh(
-    new THREE.RingGeometry(0.016, 0.02, 20, 1, 0, 0.02),
-    pittura('#e7b15a', { unico: true, lato: 2 }),
-  ));
-  anello.material.side = THREE.DoubleSide;
-  anello.rotation.y = -Math.PI / 2;
-  anello.position.x = -0.006;
-  anello.visible = false;
-  vite.add(testaVite, croceA, croceB, anello);
-
-  tappo.add(tappoMesh, macchia, vite);
-
-  const contatto = nominato('Contatto', mesh('cilindro', [0.012, 0.016, 0.02, 6], '#6e8b4e', { unico: true, emissive: '#9bb86a' }));
-  contatto.rotation.z = Math.PI / 2;
-  contatto.position.set(-0.05, 0, 0);
-  contatto.visible = false;
-
-  const pilaA = pila('#5d6a3e', 'PilaA', true);
-  const pilaB = pila('#6a7348', 'PilaB', true);
-  pilaA.position.set(-0.02, 0.015, 0);
-  pilaB.position.set(-0.02, -0.015, 0);
-  pilaA.visible = false;
-  pilaB.visible = false;
-
-  const nuovaA = pila('#7dbe6e', 'PilaNuovaA', false);
-  const nuovaB = pila('#8bcf78', 'PilaNuovaB', false);
-  nuovaA.position.set(-0.02, 0.015, 0);
-  nuovaB.position.set(-0.02, -0.015, 0);
-  nuovaA.visible = false;
-  nuovaB.visible = false;
-
-  const sedeA = nominato('SedeA', new THREE.Object3D());
-  const sedeB = nominato('SedeB', new THREE.Object3D());
-  sedeA.position.set(-0.02, 0.015, 0);
-  sedeB.position.set(-0.02, -0.015, 0);
-  const centro = nominato('CentroTorcia', new THREE.Object3D());
-
-  g.add(corpo, testa, vetro, bottone, tappo, contatto, pilaA, pilaB, nuovaA, nuovaB, sedeA, sedeB, centro);
-  g.position.set(0, 0.055, 0.04);
-  return g;
 }
 
 export function creaTelecomando() {
@@ -278,11 +155,8 @@ export function creaBottega() {
     statici.push(pezzo);
     return pezzo;
   };
-  aggiungi(mesh('scatola', [1.15, 0.06, 0.7], '#c4844e')).position.set(0, 0.02, 0.02);
-  const panno = aggiungi(mesh('scatola', [0.42, 0.012, 0.28], '#8fbfa8'));
-  panno.position.set(0, 0.052, 0.04);
   aggiungi(mesh('scatola', [1.8, 1.15, 0.06], '#f4d2c0')).position.set(0, 0.62, -0.55);
-  aggiungi(mesh('scatola', [2.4, 0.04, 2.2], '#e7cbb8')).position.set(0, -0.02, 0.4);
+  aggiungi(mesh('scatola', [2.4, 0.04, 2.2], '#e7cbb8')).position.set(0, -0.9, 0.4);
   const finestra = aggiungi(mesh('scatola', [0.36, 0.42, 0.02], '#fff6ea', { emissive: '#ffd59a' }));
   finestra.position.set(-0.55, 0.78, -0.51);
   const stipiteS = aggiungi(mesh('scatola', [0.06, 0.7, 0.06], '#a86b3a'));
@@ -332,7 +206,7 @@ export function creaBottega() {
     pittura('#000000', { opacita: 0.12 }),
   );
   ombra.rotation.x = -Math.PI / 2;
-  ombra.position.set(0, 0.056, 0.04);
+  ombra.position.set(0, 0.012, 0.04);
   ombra.name = 'Ombra';
 
   return {
@@ -351,19 +225,127 @@ export function indicizza(radice, mappa) {
   });
 }
 
-export async function provaGlb(id, radice) {
-  const chiave = Object.keys(disponibili).find((percorso) => percorso.endsWith(`/${id}.glb`));
-  if (!chiave) return 0;
-  const url = await disponibili[chiave]();
-  const gltf = await new GLTFLoader().loadAsync(url);
-  let innestate = 0;
-  for (const nome of PARTI[id] || []) {
-    const sorgente = gltf.scene.getObjectByName(nome);
-    const destino = radice.getObjectByName(nome);
-    if (!sorgente || !destino) continue;
-    while (destino.children.length) destino.remove(destino.children[0]);
-    destino.add(sorgente);
-    innestate += 1;
+export function memorizzaPosa(nodo) {
+  if (!nodo) return null;
+  nodo.userData.basePos = nodo.position.clone();
+  nodo.userData.baseQuat = nodo.quaternion.clone();
+  nodo.userData.casaParent = nodo.parent;
+  return nodo;
+}
+
+/** Un materiale condiviso (bottega_opaco, bottega_metallo) si clona prima di toccare colore o emissive. */
+export function clonaMateriale(mesh) {
+  if (!mesh?.material || mesh.userData.materialeProprio) {
+    const attuale = mesh?.material;
+    return Array.isArray(attuale) ? attuale[0] : attuale;
   }
-  return innestate;
+  mesh.material = Array.isArray(mesh.material)
+    ? mesh.material.map((m) => m.clone())
+    : mesh.material.clone();
+  mesh.userData.materialeProprio = true;
+  return Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+}
+
+async function caricaGlb(nome) {
+  const url = `${import.meta.env.BASE_URL}modelli/${nome}.glb`;
+  const gltf = await new GLTFLoader().loadAsync(url);
+  return gltf.scene;
+}
+
+function appoggia(nodo, scalaGenitore) {
+  nodo.updateWorldMatrix(true, true);
+  const box = new THREE.Box3().setFromObject(nodo);
+  if (!Number.isFinite(box.min.y)) return;
+  nodo.position.y -= box.min.y / scalaGenitore;
+}
+
+const FILE_ATTREZZO = {
+  lente: 'lente',
+  cacciavite: 'cacciavite',
+  pennello: 'pennellino',
+  leva: 'leva',
+  pinzette: 'pinzette',
+  nastro: 'nastro',
+};
+
+const POSA_ATTREZZO = {
+  lente: [-0.28, -0.1],
+  cacciavite: [-0.08, -0.16],
+  pennello: [0.06, -0.15],
+  leva: [0.16, -0.12],
+  pinzette: [0.22, -0.05],
+  nastro: [-0.16, 0.12],
+};
+
+async function caricaBanco() {
+  const radice = await caricaGlb('banco');
+  radice.name = 'banco';
+  radice.scale.setScalar(SCALA);
+  const cassetto = radice.getObjectByName('cassetto');
+  const vassoio = radice.getObjectByName('vassoietto');
+  if (!cassetto || !vassoio) return null;
+  memorizzaPosa(cassetto);
+  cassetto.userData.sulBanco = true;
+  for (const nome of ['pila_nuova_a', 'pila_nuova_b']) memorizzaPosa(radice.getObjectByName(nome));
+  vassoio.userData.sulBanco = true;
+  return { radice, cassetto, vassoio };
+}
+
+async function caricaTelecomando() {
+  const radice = await caricaGlb('telecomando');
+  const guscio = radice.getObjectByName('guscio');
+  const molla = radice.getObjectByName('molla');
+  const tasto = radice.getObjectByName('tasto_on');
+  const nastro = radice.getObjectByName('nastro_filo');
+  if (!guscio || !molla || !tasto || !nastro) return null;
+  nastro.name = 'nastro';
+  nastro.userData.manica = true;
+  memorizzaPosa(guscio);
+  memorizzaPosa(molla);
+  memorizzaPosa(tasto);
+  tasto.userData.baseY = tasto.position.y;
+  const sede = new THREE.Object3D();
+  sede.name = 'sede_guscio';
+  sede.position.set(0, 0.02, 0);
+  radice.add(sede);
+  const modello = new THREE.Group();
+  modello.name = 'modello_telecomando';
+  modello.scale.setScalar(SCALA);
+  modello.add(radice);
+  const g = new THREE.Group();
+  g.name = 'Telecomando';
+  g.add(modello);
+  g.visible = false;
+  g.position.set(0, 0.002, 0.04);
+  g.userData.posato = true;
+  return g;
+}
+
+async function caricaAttrezzi(banco) {
+  for (const [id, file] of Object.entries(FILE_ATTREZZO)) {
+    const radice = await caricaGlb(file);
+    radice.name = `attrezzo_${id}`;
+    const [x, z] = POSA_ATTREZZO[id];
+    radice.position.set(x, 0.02, z);
+    radice.rotation.x = Math.PI / 2;
+    radice.rotation.z = id === 'leva' ? 0.4 : -0.3;
+    banco.add(radice);
+    appoggia(radice, SCALA);
+    radice.position.y += 0.002;
+  }
+}
+
+/** Banco, telecomando e attrezzi. Null se il file o un nodo obbligatorio manca. */
+export async function caricaSet() {
+  try {
+    const banco = await caricaBanco();
+    if (!banco) return { banco: null, telecomando: null };
+    const [telecomando] = await Promise.all([
+      caricaTelecomando().catch(() => null),
+      caricaAttrezzi(banco.radice).catch(() => null),
+    ]);
+    return { banco, telecomando };
+  } catch {
+    return { banco: null, telecomando: null };
+  }
 }

@@ -4,7 +4,7 @@ import { pittura } from './modelli.js';
 
 /** Nodi del GLB approvato. Il tappo ha il pivot in (0, 0.03, 0) e si svita su Y. */
 export const NODI_TORCIA = [
-  'corpo', 'vetro', 'tappo', 'vite', 'macchia', 'contatto',
+  'corpo', 'vetro', 'bottone', 'tappo', 'vite', 'macchia', 'contatto',
   'pila_a', 'pila_b', 'sede_a', 'sede_b', 'centro_torcia',
 ];
 
@@ -43,34 +43,19 @@ function etichetta(nome) {
   return mesh;
 }
 
-function pilaNuova(nome, x) {
-  const g = new THREE.Group();
-  g.name = nome;
-  const corpo = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.012, 0.012, 0.046, 10),
-    pittura('#7dbe6e'),
-  );
-  const polo = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.005, 0.005, 0.006, 8),
-    pittura('#d9dde2'),
-  );
-  polo.position.y = 0.026;
-  g.add(corpo, polo);
-  g.position.set(x, 0.03, 0);
-  g.visible = false;
-  return g;
-}
-
-function aggiungiAiuti(radice) {
-  const bottone = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.011, 0.011, 0.012, 8),
-    pittura('#f0b86e', { unico: true }),
-  );
-  bottone.name = 'bottone';
-  bottone.rotation.x = Math.PI / 2;
-  bottone.position.set(0, 0.12, 0.049);
-  bottone.userData.baseZ = 0.049;
-  radice.add(bottone);
+function aggiungiAiuti(radice, procedurale) {
+  let bottone = radice.getObjectByName('bottone');
+  if (!bottone) {
+    bottone = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.011, 0.011, 0.012, 8),
+      pittura('#f0b86e', { unico: true }),
+    );
+    bottone.name = 'bottone';
+    bottone.rotation.x = Math.PI / 2;
+    bottone.position.set(0, 0.12, 0.044);
+    radice.add(bottone);
+  }
+  bottone.userData.baseZ = bottone.position.z;
 
   const vite = radice.getObjectByName('vite');
   if (vite) {
@@ -97,13 +82,17 @@ function aggiungiAiuti(radice) {
   const tappo = radice.getObjectByName('tappo');
   if (tappo) tappo.userData.baseY = tappo.position.y || BASE_TAPPO_Y;
 
-  for (const nome of ['pila_a', 'pila_b']) {
-    const pila = radice.getObjectByName(nome);
-    if (pila && !pila.getObjectByName(`${nome}_anno`)) pila.add(etichetta(nome));
+  for (const nome of ['pila_a', 'pila_b', 'sede_a', 'sede_b']) {
+    const nodo = radice.getObjectByName(nome);
+    if (!nodo) continue;
+    nodo.userData.basePos = nodo.position.clone();
+    nodo.userData.baseQuat = nodo.quaternion.clone();
   }
-  if (!radice.getObjectByName('pila_nuova_a')) {
-    radice.add(pilaNuova('pila_nuova_a', -0.016));
-    radice.add(pilaNuova('pila_nuova_b', 0.016));
+  if (procedurale) {
+    for (const nome of ['pila_a', 'pila_b']) {
+      const pila = radice.getObjectByName(nome);
+      if (pila && !pila.getObjectByName(`${nome}_anno`)) pila.add(etichetta(nome));
+    }
   }
 }
 
@@ -154,7 +143,8 @@ function procedurale() {
     pittura('#6e8b4e', { unico: true, emissive: '#9bb86a' }),
   );
   contatto.name = 'contatto';
-  contatto.position.y = 0.0935;
+  contatto.position.y = 0.036;
+  tappo.add(contatto);
 
   const pila = (nome, x) => {
     const mesh = new THREE.Mesh(
@@ -162,19 +152,19 @@ function procedurale() {
       pittura('#8a9a5b', { unico: true }),
     );
     mesh.name = nome;
-    mesh.position.set(x, 0.06, 0);
+    mesh.position.set(x, 0.0655, 0);
     return mesh;
   };
   const sede = (nome, x) => {
     const nodo = new THREE.Object3D();
     nodo.name = nome;
-    nodo.position.set(x, 0.06, 0);
+    nodo.position.set(x, 0.0655, 0);
     return nodo;
   };
   const centro = new THREE.Object3D();
   centro.name = 'centro_torcia';
   centro.position.y = CENTRO_Y;
-  g.add(corpo, tappo, contatto, pila('pila_a', -0.016), pila('pila_b', 0.016), sede('sede_a', -0.016), sede('sede_b', 0.016), centro);
+  g.add(corpo, tappo, pila('pila_a', -0.016), pila('pila_b', 0.016), sede('sede_a', -0.016), sede('sede_b', 0.016), centro);
   return g;
 }
 
@@ -205,8 +195,8 @@ export async function montaTorcia(modello) {
     modello.add(mesh);
   }
   const radice = modello.children[0];
-  aggiungiAiuti(radice);
-  return { glb, nodi: NODI_TORCIA.filter((nome) => radice.getObjectByName(nome)).concat(['bottone', 'anello']) };
+  aggiungiAiuti(radice, !glb);
+  return { glb, nodi: NODI_TORCIA.filter((nome) => radice.getObjectByName(nome)).concat(['anello']) };
 }
 
 export function posaTappo(tappo, vite, aperto, giri) {

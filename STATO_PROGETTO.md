@@ -29,7 +29,7 @@ Per questo tutorial il router ha indicato:
 | --- | --- | --- |
 | 1 | `threejs-scene-setup` | Scena, camera, renderer, ciclo `setAnimationLoop`, three **r186** |
 | 2 | `threejs-materials-lighting` | Due luci, niente ombre né post-processing: il budget dei primi istanti vince sullo stile |
-| 3 | `threejs-gltf-loading` | `public/modelli/torcia.glb` per nome nodo, con riserva procedurale |
+| 3 | `threejs-gltf-loading` | `public/modelli/*.glb` per nome nodo, con riserva procedurale |
 | 4 | `input-systems` | Gesti come azioni, dito e mouse sullo stesso strato, aree larghe |
 | 5 | `game-ui-ux` | Ancore, area sicura, pila di schermate, testi leggibili |
 | 6 | `dialogue-systems` | Battute a dati, con id di stringa |
@@ -41,7 +41,7 @@ Per questo tutorial il router ha indicato:
 
 Il tutorial segue `docs/PRIMI_ISTANTI.md`: saracinesca, torcia (il tappo si svita sull'asse del GLB), telecomando, chiusura nella finzione. Ettore non si nomina sulla bolla. Una bolla non fa avanzare il passo. Il copione nel tutorial è di 158 parole.
 
-La torcia arriva da `public/modelli/torcia.glb`. Telecomando, attrezzi e banco restano procedurali finché non arrivano i loro GLB. Il progresso sta in `localStorage` (`la-bottega:salvataggio`, versione 2, con copia `.bak`). Un salvataggio della v1 ricomincia da capo.
+Torcia, telecomando, banco e i sei attrezzi arrivano da `public/modelli/` (scala 1.35). Ettore, la stanza e la TV restano mesh di riserva: non c'è un GLB per loro. Il tappo si svita sull'asse, il guscio del telecomando ruota sul perno, il cassetto a destra scorre verso la camera. Il progresso sta in `localStorage` (`la-bottega:salvataggio`, versione 2, con copia `.bak`). Un salvataggio della v1 ricomincia da capo.
 
 ## Verifica
 

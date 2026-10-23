@@ -1,23 +1,26 @@
 import * as THREE from 'three';
 import { clona } from './mondo.js';
-import { creaBottega, creaEttore, creaTelecomando, indicizza, pittura } from './modelli.js';
+import { caricaSet, clonaMateriale, creaBottega, creaEttore, creaTelecomando, indicizza, pittura } from './modelli.js';
 import { montaTorcia, posaTappo } from './torcia.js';
 
 const POSE_TORCIA = {
-  banco: new THREE.Vector3(0, 0.12, 0.02),
-  spinta: new THREE.Vector3(0, 0.12, 0.07),
-  lato: new THREE.Vector3(0.32, 0.12, 0.06),
+  banco: new THREE.Vector3(0, 0.08, 0.02),
+  spinta: new THREE.Vector3(0, 0.08, 0.07),
+  lato: new THREE.Vector3(0.32, 0.08, 0.06),
 };
+
+const APERTURA_GUSCIO = 160 * Math.PI / 180;
+const APERTURA_CASSETTO = 0.075;
 
 const INQUADRATURE = {
   PORTA: { nodo: 'Soglia', dist: 0.85, alza: 0.22 },
-  BANCO: { nodo: 'bottone', dist: 1.45, alza: 0.46 },
+  BANCO: { nodo: 'bottone', dist: 3.19, alza: 1.01 },
   'DETTAGLIO-CODA': { nodo: 'macchia', dist: 0.42, alza: 0.06 },
   'DETTAGLIO-VITE': { nodo: 'vite', dist: 0.34, alza: 0.04 },
   'DETTAGLIO-TAPPO-APERTO': { nodo: 'contatto', dist: 0.48, alza: 0.08 },
-  TELECOMANDO: { nodo: 'tasto_on', dist: 0.62, alza: 0.2 },
-  'TC-RETRO': { nodo: 'fessura_a', dist: 0.5, alza: 0.06 },
-  'TC-INTERNO': { nodo: 'filo', dist: 0.46, alza: 0.07 },
+  TELECOMANDO: { nodo: 'tasto_on', dist: 0.42, alza: 0.72 },
+  'TC-RETRO': { nodo: 'fessura_a', dist: 0.22, alza: 0.5, lato: -0.4 },
+  'TC-INTERNO': { nodo: 'filo', dist: 0.3, alza: 0.58 },
 };
 
 function easeInOutSine(t) {
@@ -112,18 +115,45 @@ export class Scena {
     this.ultimoTv = -1;
 
     this.ridimensiona();
-    this.prontaGlb = montaTorcia(this.modelloTorcia).then((info) => {
+    this._miraCassetto = false;
+    this.prontaGlb = this.montaTutto();
+  }
+
+  async montaTutto() {
+    try {
+      const info = await montaTorcia(this.modelloTorcia);
       this.glb = info.glb;
       this.nodiTorcia = info.nodi;
-      this.nodi = new Map();
-      indicizza(this.scene, this.nodi);
-      this.anello = this.nodi.get('anello');
-      this.vetro = this.nodi.get('vetro');
-      this.macchia = this.nodi.get('macchia');
-      this.contatto = this.nodi.get('contatto');
-      this.sporco = true;
+      const set = await caricaSet();
+      if (set.banco) {
+        this.scene.remove(this.cassetto);
+        this.scene.remove(this.vassoio);
+        this.scene.add(set.banco.radice);
+        this.cassetto = set.banco.cassetto;
+        this.vassoio = set.banco.vassoio;
+      }
+      if (set.telecomando) {
+        this.scene.remove(this.telecomando);
+        this.telecomando = set.telecomando;
+        this.scene.add(this.telecomando);
+      }
+      this.reindicizza();
       return info;
-    }).catch(() => ({ glb: false, nodi: [] }));
+    } catch {
+      this.reindicizza();
+      return { glb: false, nodi: [] };
+    }
+  }
+
+  reindicizza() {
+    this.nodi = new Map();
+    indicizza(this.scene, this.nodi);
+    this.anello = this.nodi.get('anello');
+    this.vetro = this.nodi.get('vetro');
+    this.macchia = this.nodi.get('macchia');
+    this.contatto = this.nodi.get('contatto');
+    this.schermo = this.nodi.get('Schermo') || this.schermo;
+    this.sporco = true;
   }
 
   creaFascio() {
@@ -228,23 +258,32 @@ export class Scena {
     if (tappo) posaTappo(tappo, vite, t.tappo || 0, t.giri || 0);
     this.coloriOssido(t.pulizia || 0, t.macchia || 0);
     const bottone = this.nodo('bottone');
-    if (bottone) bottone.position.z = (bottone.userData.baseZ || 0.049) - (t.bottone || 0) * 0.004;
+    if (bottone) bottone.position.z = (bottone.userData.baseZ ?? 0.044) - (t.bottone || 0) * 0.002;
     if (this.vetro?.material) {
-      const materiale = Array.isArray(this.vetro.material) ? this.vetro.material[0] : this.vetro.material;
+      const materiale = clonaMateriale(this.vetro);
       materiale.emissive = materiale.emissive || new THREE.Color('#ffd59a');
+      materiale.emissive.set('#ffd59a');
       materiale.emissiveIntensity = t.accesa ? 1.15 : 0;
     }
 
     const telecomando = this.telecomando;
     const c = vista.telecomando;
     telecomando.visible = Boolean(c.visibile);
-    telecomando.position.set(0, 0.1, 0.04);
+    if (!telecomando.userData.posato) telecomando.position.set(0, 0.1, 0.04);
     telecomando.rotation.set(c.tilt || 0, c.yaw || 0, 0);
     const guscio = this.nodo('guscio');
     const apertoGuscio = c.guscio || 0;
     if (guscio && !this.trascinati.has('guscio')) {
-      guscio.position.z = -0.012 - apertoGuscio * 0.05;
-      guscio.rotation.x = -apertoGuscio * 0.7;
+      if (guscio.userData.basePos) {
+        const casa = guscio.userData.casaParent;
+        if (casa && guscio.parent !== casa) casa.add(guscio);
+        guscio.scale.set(1, 1, 1);
+        guscio.position.copy(guscio.userData.basePos);
+        guscio.rotation.set(0, 0, apertoGuscio * APERTURA_GUSCIO);
+      } else {
+        guscio.position.z = -0.012 - apertoGuscio * 0.05;
+        guscio.rotation.x = -apertoGuscio * 0.7;
+      }
     }
     const mostraDentro = apertoGuscio > 0.35;
     const filo = this.nodo('filo');
@@ -253,19 +292,53 @@ export class Scena {
     if (molla) molla.visible = mostraDentro || this.trascinati.has('molla');
     const nastro = this.nodo('nastro');
     if (nastro) {
-      nastro.visible = mostraDentro && (c.nastro || 0) > 0.02;
-      const fasi = Math.min(6, Math.ceil((c.nastro || 0) * 6));
-      nastro.scale.setScalar(0.35 + fasi * 0.12);
+      const acceso = mostraDentro && (c.nastro || 0) > 0.02;
+      nastro.visible = acceso;
+      if (nastro.userData.manica) nastro.scale.z = Math.max(0.001, c.nastro || 0);
+      else {
+        const fasi = Math.min(6, Math.ceil((c.nastro || 0) * 6));
+        nastro.scale.setScalar(0.35 + fasi * 0.12);
+      }
     }
     if (molla && !this.trascinati.has('molla')) {
-      const sede = c.molla > 0.5 ? this.nodo('sede_molla').position : new THREE.Vector3(0.016, -0.03, -0.002);
-      molla.position.copy(sede);
+      if (molla.userData.basePos) {
+        const casa = molla.userData.casaParent;
+        if (casa && molla.parent !== casa) casa.add(molla);
+        molla.scale.set(1, 1, 1);
+        if ((c.molla || 0) > 0.5) {
+          const sede = this.nodo('sede_molla');
+          if (sede) molla.position.copy(sede.position);
+          molla.quaternion.identity();
+        } else {
+          molla.position.copy(molla.userData.basePos);
+          molla.quaternion.copy(molla.userData.baseQuat);
+        }
+      } else {
+        const sede = c.molla > 0.5 ? this.nodo('sede_molla').position : new THREE.Vector3(0.016, -0.03, -0.002);
+        molla.position.copy(sede);
+      }
     }
-    if (filo?.material) filo.material.emissiveIntensity = c.filoVisto && (c.nastro || 0) < 0.7 ? 0.7 : 0;
-    if (molla?.material) molla.material.emissiveIntensity = c.mollaVista && c.molla < 0.5 ? 0.45 : 0;
+    const tasto = this.nodo('tasto_on');
+    if (tasto && tasto.userData.baseY != null) {
+      tasto.position.y = tasto.userData.baseY - (c.premuto || 0) * 0.0015;
+    }
+    if (filo?.material) {
+      const materiale = clonaMateriale(filo);
+      materiale.emissive.set('#e8977c');
+      materiale.emissiveIntensity = c.filoVisto && (c.nastro || 0) < 0.7 ? 0.7 : 0;
+    }
+    if (molla?.material) {
+      const materiale = clonaMateriale(molla);
+      materiale.emissive.set('#ffd59a');
+      materiale.emissiveIntensity = c.mollaVista && c.molla < 0.5 ? 0.45 : 0;
+    }
 
-    if ((vista.cassetto || 0) > 0.45) this.ancora(this.cassetto, 0.52, 0.56, 0.62);
-    if ((t.pileVecchie || 0) > 0) this.ancora(this.vassoio, 0.28, 0.62, 0.62);
+    if (this.cassetto?.userData.sulBanco) {
+      const base = this.cassetto.userData.basePos;
+      const aperto = vista.cassetto || 0;
+      this.cassetto.position.set(base.x, base.y, base.z + APERTURA_CASSETTO * aperto);
+    } else if ((vista.cassetto || 0) > 0.45) this.ancora(this.cassetto, 0.52, 0.56, 0.62);
+    if (!this.vassoio?.userData.sulBanco && (t.pileVecchie || 0) > 0) this.ancora(this.vassoio, 0.28, 0.62, 0.62);
     if ((vista.tv || 0) > 0) {
       this.ancora(this.tv, 0.62, 0.16, 1.15);
       this.tv.lookAt(this.camera.position);
@@ -305,57 +378,65 @@ export class Scena {
     const t = pulizia >= 0.98 ? 1 : Math.min(0.72, pulizia * 0.72);
     const sporco = new THREE.Color('#6e8b4e');
     const pulito = new THREE.Color('#d9dde2');
-    const contatto = Array.isArray(this.contatto.material) ? this.contatto.material[0] : this.contatto.material;
-    const macchiaMat = Array.isArray(this.macchia.material) ? this.macchia.material[0] : this.macchia.material;
+    const contatto = clonaMateriale(this.contatto);
+    const macchiaMat = clonaMateriale(this.macchia);
     contatto.color.copy(sporco).lerp(pulito, t);
-    contatto.emissive = contatto.emissive || new THREE.Color('#9bb86a');
+    contatto.emissive.set('#9bb86a');
     contatto.emissiveIntensity = t > 0.9 ? 0.25 : 0.08;
     const viva = macchia && pulizia < 0.92;
     macchiaMat.color.copy(sporco).lerp(pulito, t * 0.85);
-    macchiaMat.emissive = macchiaMat.emissive || new THREE.Color('#9bb86a');
+    macchiaMat.emissive.set('#9bb86a');
     macchiaMat.emissiveIntensity = viva ? 0.7 : 0.05;
   }
 
   sistemaPile(vista) {
     const t = vista.torcia;
     const cassettoAperto = (vista.cassetto || 0) > 0.45;
-    const sistema = (nome, fuori, casa, visibile) => {
+    const radice = this.modelloTorcia.children[0];
+    const sistema = (nome, fuori, xVassoio, visibile) => {
       if (this.trascinati.has(nome)) return;
       const nodo = this.nodo(nome);
-      if (!nodo) return;
+      if (!nodo || !radice) return;
       if (fuori) {
-        this.posaNelVassoio(nodo, casa);
+        this.posaNelVassoio(nodo, xVassoio);
         return;
       }
-      const radice = this.modelloTorcia.children[0];
-      if (!radice) return;
-      radice.attach(nodo);
-      nodo.position.set(casa.x, casa.y, casa.z);
-      nodo.rotation.set(0, 0, 0);
+      if (nodo.parent !== radice) radice.add(nodo);
+      nodo.scale.set(1, 1, 1);
+      const casa = nodo.userData.basePos;
+      if (casa) {
+        nodo.position.copy(casa);
+        nodo.quaternion.copy(nodo.userData.baseQuat);
+      } else nodo.position.set(nome.endsWith('a') ? -0.016 : 0.016, 0.0655, 0);
       nodo.visible = visibile;
     };
-    const casa = (nome) => (nome === 'pila_a'
-      ? { x: -0.016, y: 0.06, z: 0 }
-      : { x: 0.016, y: 0.06, z: 0 });
-    sistema('pila_a', (t.pileVecchie || 0) >= 1, (t.pileVecchie || 0) >= 1 ? -0.02 : casa('pila_a'), (t.pileVecchie || 0) < 1);
-    sistema('pila_b', (t.pileVecchie || 0) >= 2, (t.pileVecchie || 0) >= 2 ? 0.02 : casa('pila_b'), (t.pileVecchie || 0) < 2);
+    sistema('pila_a', (t.pileVecchie || 0) >= 1, -0.02, (t.pileVecchie || 0) < 1);
+    sistema('pila_b', (t.pileVecchie || 0) >= 2, 0.02, (t.pileVecchie || 0) < 2);
     const nelCassetto = (nome, inserita) => {
       if (this.trascinati.has(nome)) return;
       const nodo = this.nodo(nome);
       if (!nodo) return;
       if (inserita) {
-        const sede = nome.endsWith('a') ? casa('pila_a') : casa('pila_b');
-        this.modelloTorcia.attach(nodo);
-        const radice = this.modelloTorcia.children[0];
-        if (radice) radice.attach(nodo);
-        nodo.position.set(sede.x, sede.y, sede.z);
-        nodo.rotation.set(0, 0, 0);
+        if (!radice) return;
+        const sede = this.nodo(nome.endsWith('a') ? 'sede_a' : 'sede_b');
+        if (nodo.parent !== radice) radice.add(nodo);
+        nodo.scale.set(1, 1, 1);
+        if (sede?.userData.basePos) nodo.position.copy(sede.userData.basePos);
+        else if (sede) nodo.position.copy(sede.position);
+        else nodo.position.set(nome.endsWith('a') ? -0.016 : 0.016, 0.0655, 0);
+        nodo.quaternion.identity();
         nodo.visible = true;
         return;
       }
-      this.cassetto.attach(nodo);
-      nodo.position.set(nome.endsWith('a') ? -0.016 : 0.016, 0.03, 0.01);
-      nodo.rotation.set(Math.PI / 2, 0, 0);
+      if (this.cassetto && nodo.parent !== this.cassetto) this.cassetto.add(nodo);
+      nodo.scale.set(1, 1, 1);
+      if (nodo.userData.basePos) {
+        nodo.position.copy(nodo.userData.basePos);
+        nodo.quaternion.copy(nodo.userData.baseQuat);
+      } else {
+        nodo.position.set(nome.endsWith('a') ? -0.016 : 0.016, 0.03, 0.01);
+        nodo.rotation.set(Math.PI / 2, 0, 0);
+      }
       nodo.visible = cassettoAperto;
     };
     nelCassetto('pila_nuova_a', (t.pileNuove || 0) >= 1);
@@ -363,9 +444,10 @@ export class Scena {
   }
 
   posaNelVassoio(nodo, x) {
-    this.vassoio.attach(nodo);
-    nodo.position.set(x, 0.02, 0);
-    nodo.rotation.z = Math.PI / 2;
+    if (this.vassoio && nodo.parent !== this.vassoio) this.vassoio.add(nodo);
+    nodo.scale.set(1, 1, 1);
+    nodo.position.set(x, 0.02, 0.01);
+    nodo.quaternion.set(0, 0, -Math.SQRT1_2, Math.SQRT1_2);
     nodo.visible = true;
   }
 
@@ -460,11 +542,14 @@ export class Scena {
   /** Misura il nodo com'è nella posa finale, poi lascia che l'oggetto ci arrivi. */
   inquadra(nome, vistaFinale, durata = 0.55) {
     const shot = INQUADRATURE[nome] || INQUADRATURE.BANCO;
-    if (this.shot === nome && this.cameraFerma() && durata < 0.2) {
+    const vuoleCassetto = (vistaFinale.cassetto || 0) > 0.45 && Boolean(this.cassetto?.userData.sulBanco);
+    if (this.shot === nome && this.cameraFerma() && durata < 0.2 && this._miraCassetto === vuoleCassetto) {
       this.meta = vistaFinale;
       this.sporco = true;
       return;
     }
+    this._miraCassetto = vuoleCassetto;
+    if (vuoleCassetto) durata = Math.max(durata, 0.55);
     this.shot = nome;
     const prima = this.visuale;
     this.scrivi(vistaFinale, 1);
@@ -472,8 +557,12 @@ export class Scena {
     this.scene.updateMatrixWorld(true);
     const nodo = this.nodo(shot.nodo) || this.torcia;
     nodo.getWorldPosition(this._v);
-    const dest = new THREE.Vector3(this._v.x, this._v.y + shot.alza, this._v.z + shot.dist);
+    const dest = new THREE.Vector3(this._v.x + (shot.lato || 0), this._v.y + shot.alza, this._v.z + shot.dist);
     const guarda = this._v.clone();
+    if (vuoleCassetto) {
+      guarda.set(0.04, 0.1, 0.08);
+      dest.set(0.04, 1.45, 3.33);
+    }
     if (!this.visuale) this.visuale = clona(vistaFinale);
     if (prima) {
       this.scrivi(prima, 1);
