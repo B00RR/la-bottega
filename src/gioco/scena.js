@@ -257,7 +257,8 @@ export class Scena {
     torcia.rotation.set(t.tilt || 0, t.yaw || 0, t.roll || 0);
     const tappo = this.nodo('tappo');
     const vite = this.nodo('vite');
-    if (tappo) posaTappo(tappo, vite, t.tappo || 0, t.giri || 0);
+    const parcheggia = (t.pulizia || 0) >= 0.98 && (t.tappo || 0) > 0.85;
+    if (tappo) posaTappo(tappo, vite, t.tappo || 0, t.giri || 0, parcheggia);
     this.coloriOssido(t.pulizia || 0, t.macchia || 0);
     const bottone = this.nodo('bottone');
     if (bottone) bottone.position.z = (bottone.userData.baseZ ?? 0.044) - (t.bottone || 0) * 0.002;

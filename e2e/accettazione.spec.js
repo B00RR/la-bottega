@@ -239,8 +239,8 @@ test.describe('accettazione', () => {
 
 test('attrezzo e verso sbagliati non avanzano, e Rigioca riparte', async ({ page }, info) => {
   test.skip(info.project.name !== 'telefono', 'ritratto touch');
-  await prepara(page, '?debug=zone&passo=b7-svita');
-  await attendiPasso(page, 'b7-svita');
+  await prepara(page, '?debug=zone&passo=b11-chiudi');
+  await attendiPasso(page, 'b11-chiudi');
   const vite = await punto(page, 'vite');
   const giro = (verso) => {
     const punti = [];
@@ -251,7 +251,7 @@ test('attrezzo e verso sbagliati non avanzano, e Rigioca riparte', async ({ page
     return punti;
   };
   const prima = (await leggi(page)).progresso;
-  await puntatore(page, giro(1), false);
+  await puntatore(page, giro(-1), false);
   expect((await leggi(page)).progresso).toBeCloseTo(prima, 2);
   await expect(page.locator('#correzione')).toBeVisible();
   const nuda = (await page.locator('#correzione').innerText()).trim();
@@ -259,17 +259,18 @@ test('attrezzo e verso sbagliati non avanzano, e Rigioca riparte', async ({ page
   expect((await page.locator('#bolla').innerText()).trim()).not.toBe(nuda);
 
   await strumento(page, 'pennello', false);
-  await puntatore(page, giro(1), false);
+  await puntatore(page, giro(-1), false);
   expect((await leggi(page)).progresso).toBeCloseTo(prima, 2);
+  expect((await leggi(page)).id).toBe('b11-chiudi');
 
   await strumento(page, 'cacciavite', false);
-  await puntatore(page, giro(-1), false);
+  await puntatore(page, giro(1), false);
   const dopo = await leggi(page);
   expect(dopo.progresso).toBeCloseTo(prima, 2);
-  expect(dopo.id).toBe('b7-svita');
+  expect(dopo.id).toBe('b11-chiudi');
   await expect(page.locator('#correzione')).toBeVisible();
   const verso = (await page.locator('#correzione').innerText()).trim();
-  expect(verso.toLowerCase()).toContain('sinistra');
+  expect(verso.toLowerCase()).toContain('destra');
   expect(verso.toLowerCase()).not.toContain('quello');
   expect((await page.locator('#bolla').innerText()).trim()).not.toBe(verso);
 

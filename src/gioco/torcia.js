@@ -218,13 +218,13 @@ export async function montaTorcia(modello) {
   return { glb, nodi: NODI_TORCIA.filter((nome) => radice.getObjectByName(nome)).concat(['anello']) };
 }
 
-export function posaTappo(tappo, vite, aperto, giri) {
+export function posaTappo(tappo, vite, aperto, giri, parcheggiato) {
   if (!tappo) return;
   const base = tappo.userData.baseY ?? BASE_TAPPO_Y;
   const corsa = THREE.MathUtils.clamp(aperto || 0, 0, 1);
-  // Svita sull'asse. Aperto, il tappo si sposta di lato: non copre pile e sedi.
-  const diLato = THREE.MathUtils.smoothstep(corsa, 0.78, 1) * 0.1;
-  tappo.position.x = diLato;
+  // Svita sull'asse. Solo a lavoro finito il tappo si parcheggia di lato,
+  // altrimenti la vite esce dal primo piano mentre si gira.
+  tappo.position.x = parcheggiato ? 0.1 : 0;
   tappo.position.z = 0;
   tappo.position.y = base - corsa * 0.05;
   tappo.rotation.x = 0;
