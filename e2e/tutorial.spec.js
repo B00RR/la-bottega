@@ -27,7 +27,12 @@ test('dalle impostazioni si salta e si resta nella bottega', async ({ page }, in
   const salta = await page.locator('#salta').boundingBox();
   await puntatore(page, [{ x: salta.x + salta.width / 2, y: salta.y + salta.height / 2 }], mouse);
   await page.waitForFunction(() => document.querySelector('#app').dataset.passo === 'chiusura');
-  await expect(page.locator('#cartello')).toHaveText('Domani');
+  await page.waitForFunction(() => {
+    const n = document.querySelector('#cartello');
+    const r = n.getBoundingClientRect();
+    return n.textContent === 'Domani' && r.height > 8 && r.top >= 0 && r.bottom <= window.innerHeight;
+  });
+  await expect(page.locator('#taccuino .pina')).toBeVisible();
   expect(await page.locator('body').innerText()).not.toContain('Fine del tutorial');
   await shot(page, `${info.project.name}-salta`);
   await page.reload();

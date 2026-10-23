@@ -80,6 +80,8 @@ export class Interfaccia {
     this.maniglia.classList.toggle('pronta', Boolean(pronta));
     const domani = this.gioco?.vista?.cartello === 'domani';
     this.cartello.textContent = t(domani ? 'ui.domani' : 'ui.cartello');
+    // A metà saracinesca il cartello in alto esce dallo schermo: resta nel lembo visibile.
+    this.cartello.style.top = domani ? '70%' : '18%';
   }
 
   gesso(visibile) {
@@ -214,6 +216,14 @@ export class Interfaccia {
     this.taccuino.hidden = false;
     this.taccuino.classList.add('riparato');
     this.taccuinoTimer = 120;
+  }
+
+  apriPina() {
+    this.taccuino.hidden = false;
+    this.taccuino.classList.add('riparato');
+    this.taccuinoTimer = 0;
+    this.firmaIndizi = '';
+    this.disegnaIndizi(this.gioco);
   }
 
   alternaTaccuino() {

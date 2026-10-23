@@ -38,7 +38,7 @@ export const battute = {
   'dlg.r3.1': 'La leva. Segui la fessura.',
   'dlg.r4.1': 'Guarda dentro.',
   'dlg.r5.1': 'Le pinzette. La molla a casa.',
-  'dlg.r6.1': 'Nastro. Avvolgi il filo.',
+  'dlg.r6.1': 'Nastro. Gira a sinistra.',
   'dlg.r8.dopo': 'Ah. Il derby.',
   'dlg.fine.1': 'La base ce l\u2019hai.',
   'dlg.fine.2': 'Domani ti mando dalla signora del terzo piano.',
@@ -47,6 +47,8 @@ export const battute = {
   'corr.3': 'Bello, ma non c\u2019entra.',
   'corr.nuda': 'A mani nude? Coraggioso.',
   'corr.calma': 'Calma. Guarda cosa pulsa.',
+  'corr.verso': 'A sinistra. Si avvolge così.',
+  'corr.destra': 'A destra, stavolta.',
   'dlg.ripresa': 'Dov\u2019eravamo? Ah, s\u00ec.',
 };
 

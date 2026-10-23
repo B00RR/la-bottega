@@ -304,6 +304,36 @@ async function caricaTelecomando() {
   memorizzaPosa(molla);
   memorizzaPosa(tasto);
   tasto.userData.baseY = tasto.position.y;
+  const filo = radice.getObjectByName('filo');
+  if (filo && !filo.getObjectByName('freccia_filo')) {
+    const freccia = new THREE.Mesh(
+      new THREE.TorusGeometry(0.014, 0.0013, 4, 14, Math.PI * 1.1),
+      pittura('#f0b86e', { unico: true }),
+    );
+    freccia.name = 'freccia_filo';
+    freccia.rotation.x = Math.PI / 2;
+    freccia.position.y = 0.006;
+    freccia.visible = false;
+    const angolo = Math.PI * 1.1;
+    const punta = new THREE.Mesh(
+      new THREE.ConeGeometry(0.003, 0.007, 5),
+      pittura('#3c291c', { unico: true }),
+    );
+    punta.position.set(Math.cos(angolo) * 0.014, Math.sin(angolo) * 0.014, 0);
+    punta.rotation.z = angolo - Math.PI / 2;
+    freccia.add(punta);
+    filo.add(freccia);
+  }
+  const sedeMolla = radice.getObjectByName('sede_molla');
+  if (sedeMolla && !sedeMolla.getObjectByName('sede_molla_segno')) {
+    const segno = new THREE.Mesh(
+      new THREE.RingGeometry(0.006, 0.009, 16),
+      pittura('#f0b86e', { unico: true }),
+    );
+    segno.name = 'sede_molla_segno';
+    segno.rotation.x = -Math.PI / 2;
+    sedeMolla.add(segno);
+  }
   const sede = new THREE.Object3D();
   sede.name = 'sede_guscio';
   sede.position.set(0, 0.02, 0);

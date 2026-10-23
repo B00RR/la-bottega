@@ -223,10 +223,71 @@ test.describe('accettazione', () => {
         expect(p.x, id).toBeLessThan(zona.x1);
         expect(p.y, id).toBeGreaterThan(zona.y0);
         expect(p.y, id).toBeLessThan(zona.y1);
+        if (id === 'r3-leva') {
+          const fb = stato.punti.fessura_b;
+          visibile(fb, w, h, 'fessura_b');
+          expect(fb.x, 'fessura_b').toBeGreaterThan(zona.x0);
+          expect(fb.x, 'fessura_b').toBeLessThan(zona.x1);
+          expect(fb.y, 'fessura_b').toBeGreaterThan(zona.y0);
+          expect(fb.y, 'fessura_b').toBeLessThan(zona.y1);
+        }
         if (w === 390) await shot(page, `zona-${id}`);
       }
     }
   });
+});
+
+test('attrezzo e verso sbagliati non avanzano, e Rigioca riparte', async ({ page }, info) => {
+  test.skip(info.project.name !== 'telefono', 'ritratto touch');
+  await prepara(page, '?debug=zone&passo=b7-svita');
+  await attendiPasso(page, 'b7-svita');
+  const vite = await punto(page, 'vite');
+  const giro = (verso) => {
+    const punti = [];
+    for (let i = 0; i <= 32; i += 1) {
+      const a = (i / 32) * Math.PI * 2 * verso;
+      punti.push({ x: vite.x + Math.cos(a) * 72, y: vite.y - Math.sin(a) * 72 });
+    }
+    return punti;
+  };
+  const prima = (await leggi(page)).progresso;
+  await puntatore(page, giro(1), false);
+  expect((await leggi(page)).progresso).toBeCloseTo(prima, 2);
+  await expect(page.locator('#correzione')).toBeVisible();
+  const nuda = (await page.locator('#correzione').innerText()).trim();
+  expect(nuda.toLowerCase()).toContain('mani');
+  expect((await page.locator('#bolla').innerText()).trim()).not.toBe(nuda);
+
+  await strumento(page, 'pennello', false);
+  await puntatore(page, giro(1), false);
+  expect((await leggi(page)).progresso).toBeCloseTo(prima, 2);
+
+  await strumento(page, 'cacciavite', false);
+  await puntatore(page, giro(-1), false);
+  const dopo = await leggi(page);
+  expect(dopo.progresso).toBeCloseTo(prima, 2);
+  expect(dopo.id).toBe('b7-svita');
+  await expect(page.locator('#correzione')).toBeVisible();
+  const verso = (await page.locator('#correzione').innerText()).trim();
+  expect(verso.toLowerCase()).toContain('sinistra');
+  expect(verso.toLowerCase()).not.toContain('quello');
+  expect((await page.locator('#bolla').innerText()).trim()).not.toBe(verso);
+
+  await page.goto('/la-bottega/?debug=zone&passo=chiusura');
+  await page.waitForSelector('#app[data-pronto="1"]');
+  await page.waitForFunction(() => document.querySelector('#app').dataset.glb === 'torcia');
+  await page.waitForFunction(() => document.querySelector('#app').dataset.passo === 'chiusura');
+  await expect(page.locator('#rigioca')).toBeVisible();
+  await page.locator('#rigioca').click();
+  await page.waitForSelector('#saracinesca', { state: 'attached' });
+  await page.waitForFunction(() => document.querySelector('#app').dataset.passo === 'b1-saracinesca', null, { timeout: 20000 });
+  await page.waitForTimeout(800);
+  const indice = await page.evaluate(() => {
+    const grezzo = localStorage.getItem('la-bottega:salvataggio');
+    return grezzo ? JSON.parse(grezzo).indice : 0;
+  });
+  expect(indice).toBe(0);
+  expect((await leggi(page)).id).toBe('b1-saracinesca');
 });
 
 test('T14 le parole del copione restano nel limite', async () => {

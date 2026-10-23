@@ -54,6 +54,10 @@ export class Gioco {
     this.passo = passi[this.indice];
     this.vista = ricostruisci(this.indice);
     this.strumento = null;
+    this.strumentoSalvato = salvato.strumento || null;
+    this.salvataggioSpento = false;
+    this.gestoAmmesso = false;
+    this.erroreSensoGesto = 0;
     this.fermo = false;
     this.bloccoT = 0;
     this.eventiFatti = new Set();
@@ -142,6 +146,10 @@ export class Gioco {
     this.premuto = true;
     this.down = { x, y, t: ora() };
     this.ultimo = { x, y };
+    this.gestoAmmesso = false;
+    this.erroreSensoGesto = 0;
+    this.sensoSegnato = false;
+    this.dettoSenso = false;
     if (this.passo.tipo === 'saracinesca' && this.apertura < 1) {
       this.shDown = { x, y, t: ora() };
       return;
@@ -260,6 +268,14 @@ export class Gioco {
         : { progresso: this.progressoGesto };
     this.strumento = null;
     this.ui.strumento(null);
+    if (ripresa && this.strumentoSalvato && this.vista.strumenti.includes(this.strumentoSalvato)) {
+      this.strumento = this.strumentoSalvato;
+      this.ui.strumento(this.strumento);
+    }
+    this.strumentoSalvato = null;
+    this.gestoAmmesso = false;
+    this.erroreSensoGesto = 0;
+    this.passoCompletato = false;
     this.bloccoT = 0;
     this.eventiFatti = new Set();
     if (this.passo.tipo === 'saracinesca') {
@@ -340,11 +356,16 @@ export class Gioco {
       const fermoOra = this.scena.cameraFerma() && this.scena.oggettiFermi() && this.celebrando <= 0;
       if (fermoOra && !this.fermo) {
         this.fermo = true;
-        this.scaricaCoda();
         if (!this.intro) {
           this.intro = true;
           if (this.passo.righe?.length) this.accoda(this.passo.righe);
         }
+        const mosso = this.attesa && this.codaPunti.some((p) => Math.hypot(p.x - this.attesa.x, p.y - this.attesa.y) > 18);
+        if (this.passo.righe?.length && !mosso) {
+          this.attesa = null;
+          this.codaPunti = [];
+          this.rilascioInAttesa = null;
+        } else this.scaricaCoda();
       } else this.fermo = fermoOra;
       if (this.fermo) this.esitazione += dt;
       this.lenteAggiorna(dt);
@@ -357,6 +378,7 @@ export class Gioco {
         this.intro = true;
         if (this.passo.righe?.length) this.accoda(this.passo.righe);
         this.ui.fine(true);
+        this.ui.apriPina();
       }
       if (this.intro && !this.bolla && this.coda.length === 0 && !this.fine2) {
         this.finePausa += dt;
@@ -367,14 +389,17 @@ export class Gioco {
       }
     }
 
+    const tieneLuce = this.passoCompletato && this.passo.grande === 'torcia' && (this.bolla || this.coda.length > 0);
     if (this.celebrando > 0) {
       this.celebrando -= dt;
-      if (this.celebrando <= 0) this.avanza();
+      if (this.celebrando <= 0 && !tieneLuce) this.avanza();
+    } else if (this.passoCompletato && this.passo.grande === 'torcia' && !tieneLuce) {
+      this.avanza();
     }
 
-    if (this.passo.gesto === 'cerchio' && this.passo.soggetto === 'torcia' && this.strumento === 'cacciavite') {
-      this.scena.aggiornaAnello(Math.max(this.progressoGesto, 0.08), true);
-    }
+    const mostraVite = this.passo.gesto === 'cerchio' && this.passo.soggetto === 'torcia' && this.strumento === 'cacciavite';
+    this.scena.aggiornaAnello(Math.max(this.progressoGesto, mostraVite ? 0.18 : 0), mostraVite);
+    this.scena.mostraFrecciaFilo(Boolean(this.passo.nastro));
     if (this.premuto && (this.passo.gesto === 'gira' || this.passo.gesto === 'cerchio' || this.passo.gesto === 'strofina')) {
       this.immediato.add('torcia.yaw');
       this.immediato.add('torcia.tappo');
@@ -408,8 +433,10 @@ export class Gioco {
 
   inizia(x, y) {
     if (this.passo.tipo !== 'gesto' || this.celebrando > 0) return;
+    this.gestoAmmesso = false;
     this.azioneLeggera();
     if (!this.strumentoGiusto(x, y)) return;
+    this.gestoAmmesso = true;
     const g = this.passo.gesto;
     if (g === 'gira' || g === 'cerchio' || g === 'strofina' || g === 'scorri') this.ultimo = { x, y };
     if (g === 'estrai' || g === 'inserisci' || g === 'pinza' || g === 'chiudi') this.prendi(x, y);
@@ -417,7 +444,7 @@ export class Gioco {
 
   muovi(x, y) {
     const p = this.passo;
-    if (p.tipo !== 'gesto') return;
+    if (p.tipo !== 'gesto' || !this.gestoAmmesso) return;
     if (p.gesto === 'gira') this.muoviGira(x, y);
     else if (p.gesto === 'cerchio') this.muoviCerchio(x, y);
     else if (p.gesto === 'strofina') this.muoviStrofina(x, y);
@@ -568,12 +595,19 @@ export class Gioco {
       vibra(6);
       this.scena.emetti(this.passo.bersaglio, '#f0b86e', 2);
     }
-    const soglia = this.passo.erroreSenso ? rad(this.passo.erroreSenso.gradi) : rad(180);
-    if ((res.erroreSenso || 0) >= soglia && !this.dettoSenso) {
-      this.dettoSenso = true;
+    if (res.errore > 0) this.erroreSensoGesto += res.errore;
+    else if (res.aggiunto > 0) this.erroreSensoGesto = 0;
+    if (this.erroreSensoGesto >= rad(45) && !this.sensoSegnato) {
+      this.sensoSegnato = true;
       this.audio.cric();
-      if (this.passo.erroreSenso) this.errore(this.passo.erroreSenso.testo);
-      else this.errore('corr');
+      this.scena.schiaccia();
+      this.scena.allarmeAnello = 0.45;
+      this.scena.emetti(this.passo.bersaglio, '#c4623a', 6);
+    }
+    const soglia = rad(this.passo.erroreSenso?.gradi || 90);
+    if (this.erroreSensoGesto >= soglia && !this.dettoSenso) {
+      this.dettoSenso = true;
+      this.errore(this.passo.erroreSenso?.testo || 'corr.verso');
     }
     if (res.fatto) this.successo();
   }
@@ -787,7 +821,10 @@ export class Gioco {
     }
     if (p.musica) this.audio.strato(p.musica);
     if (p.id === 'b7-svita') this.audio.clac();
-    if (p.dopo?.length) this.accoda(p.dopo);
+    if (p.dopo?.length) {
+      this.consecutive = 0;
+      this.accoda(p.dopo);
+    }
     this.progressoGesto = 0;
     this.parziali = [];
     this.memorizza();
@@ -832,17 +869,14 @@ export class Gioco {
     this.audio.tonk();
     this.scena.schiaccia();
     this.consecutive = 0;
-    if (this.bolla) this.chiudiBolla();
+    let id = tipo;
     if (tipo === 'corr') {
-      const id = corrRotazione[this.corrI % corrRotazione.length];
+      id = corrRotazione[this.corrI % corrRotazione.length];
       this.corrI += 1;
       this.app.dataset.corr = id;
-      this.accoda([id]);
-    } else if (tipo === 'corr.nuda') this.accoda(['corr.nuda']);
-    else if (tipo) this.accoda([tipo]);
-    const detto = tipo === 'corr'
-      ? t(corrRotazione[(this.corrI - 1 + corrRotazione.length) % corrRotazione.length])
-      : t(tipo === 'corr.nuda' ? 'corr.nuda' : tipo);
+    } else if (tipo === 'corr.nuda') id = 'corr.nuda';
+    if (this.bolla) this.chiudiBolla();
+    const detto = t(id);
     this.ui.correzione(detto, this.ultimo?.x ?? this.down?.x, this.ultimo?.y ?? this.down?.y);
     if (this.errori >= 3 && !this.calma) {
       this.calma = true;
@@ -931,8 +965,9 @@ export class Gioco {
   }
 
   ricomincia() {
+    this.salvataggioSpento = true;
     cancella();
-    location.reload();
+    location.replace(location.pathname);
   }
 
   alternaAudio() {
@@ -954,11 +989,13 @@ export class Gioco {
   }
 
   memorizza() {
+    if (this.salvataggioSpento) return;
     salva({
       indice: this.indice,
       progressoGesto: this.progressoGesto,
       parziali: this.parziali,
       saltato: this.saltato,
+      strumento: this.strumento,
     });
   }
 

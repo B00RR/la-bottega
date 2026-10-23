@@ -12,8 +12,11 @@ export function statoSalvatoIniziale() {
     saltato: false,
     progressoGesto: 0,
     parziali: [],
+    strumento: null,
   };
 }
+
+const ATTREZZI = new Set(['lente', 'cacciavite', 'pennello', 'leva', 'pinzette', 'nastro']);
 
 function leggi(chiave) {
   try {
@@ -50,6 +53,7 @@ function analizza(grezzo) {
       saltato: Boolean(normalizzato.saltato),
       progressoGesto: Number.isFinite(progresso) ? Math.min(1, Math.max(0, progresso)) : 0,
       parziali,
+      strumento: ATTREZZI.has(normalizzato.strumento) ? normalizzato.strumento : null,
     };
   } catch {
     return null;
@@ -69,6 +73,7 @@ export function salva(stato) {
     saltato: Boolean(stato.saltato),
     progressoGesto: Math.min(1, Math.max(0, Number(stato.progressoGesto) || 0)),
     parziali: Array.isArray(stato.parziali) ? stato.parziali : [],
+    strumento: ATTREZZI.has(stato.strumento) ? stato.strumento : null,
   });
   try {
     const attuale = localStorage.getItem(CHIAVE);

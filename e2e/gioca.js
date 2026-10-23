@@ -36,6 +36,7 @@ export async function leggi(page) {
       nodi: app.dataset.nodi || '',
       inquadratura: app.dataset.inquadratura || '',
       aiuto: app.dataset.aiuto,
+      parziali: app.dataset.parziali || '',
       dpr: Number(app.dataset.dpr || 0),
       fps: Number(app.dataset.fps || 0),
       tris: Number(app.dataset.tris || 0),
@@ -74,6 +75,27 @@ export function visibile(p, w, h, nome) {
     throw new Error(`bersaglio fuori schermo (${nome} ${Math.round(p.x)},${Math.round(p.y)} in ${w}x${h})`);
   }
   return p;
+}
+
+export async function inZonaCalda(page, nome) {
+  const p = await punto(page, nome);
+  const { w, h } = schermo(page);
+  const x0 = w * 0.15;
+  const x1 = w * 0.85;
+  const y0 = h * 0.32;
+  const y1 = h * 0.68;
+  if (p.x < x0 || p.x > x1 || p.y < y0 || p.y > y1) {
+    throw new Error(`${nome} fuori zona calda (${Math.round(p.x)},${Math.round(p.y)} in ${w}x${h})`);
+  }
+  return p;
+}
+
+async function expectPina(page) {
+  await page.waitForFunction(() => {
+    const nodo = document.querySelector('#taccuino .pina');
+    const taccuino = document.querySelector('#taccuino');
+    return nodo && taccuino && !taccuino.hidden && nodo.textContent.includes('Pina');
+  });
 }
 
 export async function punto(page, nome) {
@@ -193,6 +215,8 @@ export async function giocaTutorial(page, { mouse, prefisso }) {
     await puntatore(page, tratti, mouse);
   });
   await attendiPasso(page, 'b9-pile-fuori');
+  await inZonaCalda(page, 'pila_a');
+  await inZonaCalda(page, 'pila_b');
   for (const nome of ['pila_a', 'pila_b']) {
     const p = await punto(page, nome);
     await puntatore(page, [p, { x: p.x, y: Math.max(8, p.y - 120) }], mouse);
@@ -228,6 +252,8 @@ export async function giocaTutorial(page, { mouse, prefisso }) {
     await puntatore(page, [c, { x: meta, y: c.y }], mouse);
   });
   await attendiPasso(page, 'r3-leva');
+  await inZonaCalda(page, 'fessura_a');
+  await inZonaCalda(page, 'fessura_b');
   await strumento(page, 'leva', mouse);
   await finche(page, 'r3-leva', mouse, async () => {
     const a = await punto(page, 'fessura_a');
@@ -237,10 +263,18 @@ export async function giocaTutorial(page, { mouse, prefisso }) {
   await attendiPasso(page, 'r4-lente');
   await strumento(page, 'lente', mouse);
   for (const nome of ['rame', 'molla']) {
-    const p = await punto(page, nome);
-    await tieni(page, { x: p.x, y: p.y + 70 }, 700, mouse);
+    for (let i = 0; i < 3; i += 1) {
+      const stato = await leggi(page);
+      if (stato.id !== 'r4-lente' || (stato.parziali || '').includes(nome)) break;
+      const p = await punto(page, nome);
+      const ly = Math.min(h - 8, Math.max(8, p.y + 70));
+      await tieni(page, { x: p.x, y: ly }, 1400, mouse);
+      await page.waitForTimeout(200);
+    }
   }
   await attendiPasso(page, 'r5-pinze');
+  await inZonaCalda(page, 'molla');
+  await inZonaCalda(page, 'sede_molla');
   await strumento(page, 'pinzette', mouse);
   await finche(page, 'r5-pinze', mouse, async () => {
     const a = await punto(page, 'molla');
@@ -265,6 +299,12 @@ export async function giocaTutorial(page, { mouse, prefisso }) {
   await shot(page, `${prefisso}-tv`);
   await attendiPasso(page, 'chiusura');
   await page.waitForFunction(() => document.querySelector('#cartello')?.textContent === 'Domani');
+  await page.waitForFunction(() => {
+    const n = document.querySelector('#cartello');
+    const r = n.getBoundingClientRect();
+    return r.height > 8 && r.top >= 0 && r.bottom <= window.innerHeight;
+  });
+  await expectPina(page);
   await shot(page, `${prefisso}-domani`);
   const testo = await page.locator('body').innerText();
   if (testo.includes('Fine del tutorial')) throw new Error('compare Fine del tutorial');

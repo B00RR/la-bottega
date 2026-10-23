@@ -113,9 +113,11 @@ export class Scena {
     this.zoomT = 0;
     this.squashT = 0;
     this.ultimoTv = -1;
+    this.allarmeAnello = 0;
 
     this.ridimensiona();
     this._miraCassetto = false;
+    this._miraTubo = false;
     this.prontaGlb = this.montaTutto();
   }
 
@@ -324,14 +326,20 @@ export class Scena {
     }
     if (filo?.material) {
       const materiale = clonaMateriale(filo);
-      materiale.emissive.set('#e8977c');
-      materiale.emissiveIntensity = c.filoVisto && (c.nastro || 0) < 0.7 ? 0.7 : 0;
+      materiale.vertexColors = false;
+      materiale.color.set('#e8977c');
+      materiale.emissive.set('#c4623a');
+      materiale.emissiveIntensity = mostraDentro && (c.nastro || 0) < 0.85 ? 0.9 : 0;
     }
     if (molla?.material) {
       const materiale = clonaMateriale(molla);
+      materiale.vertexColors = false;
+      materiale.color.set('#d9dde2');
       materiale.emissive.set('#ffd59a');
-      materiale.emissiveIntensity = c.mollaVista && c.molla < 0.5 ? 0.45 : 0;
+      materiale.emissiveIntensity = mostraDentro && (c.molla || 0) < 0.5 ? 0.65 : 0.12;
     }
+    const segnoMolla = this.nodo('sede_molla_segno');
+    if (segnoMolla) segnoMolla.visible = mostraDentro && (c.molla || 0) < 0.5;
 
     if (this.cassetto?.userData.sulBanco) {
       const base = this.cassetto.userData.basePos;
@@ -441,6 +449,13 @@ export class Scena {
     };
     nelCassetto('pila_nuova_a', (t.pileNuove || 0) >= 1);
     nelCassetto('pila_nuova_b', (t.pileNuove || 0) >= 2);
+    const aperto = (t.tappo || 0) > 0.55;
+    const segno = (nome, visibile) => {
+      const nodo = this.nodo(nome);
+      if (nodo) nodo.visible = visibile;
+    };
+    segno('sede_a_segno', aperto && (t.pileVecchie || 0) >= 1 && (t.pileNuove || 0) < 1);
+    segno('sede_b_segno', aperto && (t.pileVecchie || 0) >= 2 && (t.pileNuove || 0) < 2);
   }
 
   posaNelVassoio(nodo, x) {
@@ -453,9 +468,14 @@ export class Scena {
 
   aggiornaAnello(progresso, visibile) {
     if (!this.anello) return;
-    this.anello.visible = visibile && progresso > 0.01;
+    const allarme = this.allarmeAnello > 0;
+    this.anello.visible = visibile && (progresso > 0.01 || allarme);
     const freccia = this.nodo('freccia');
-    if (freccia) freccia.visible = visibile;
+    if (freccia) {
+      if (freccia.visible !== visibile) this.sporco = true;
+      freccia.visible = visibile;
+      freccia.scale.setScalar(allarme ? 1.45 : 1);
+    }
     if (!this.anello.visible) return;
     const chiave = Math.round(progresso * 40);
     if (this.anello.userData.chiave === chiave) return;
@@ -464,6 +484,14 @@ export class Scena {
     this.anello.geometry = new THREE.RingGeometry(0.013, 0.017, 18, 1, Math.PI / 2, Math.max(0.05, progresso * Math.PI * 2));
     this.anello.rotation.x = Math.PI / 2;
     this.sporco = true;
+  }
+
+  mostraFrecciaFilo(visibile) {
+    const freccia = this.nodo('freccia_filo');
+    if (!freccia) return;
+    if (freccia.visible !== visibile) this.sporco = true;
+    freccia.visible = visibile;
+    freccia.scale.setScalar(this.allarmeAnello > 0 ? 1.45 : 1);
   }
 
   schiaccia() {
@@ -543,19 +571,21 @@ export class Scena {
   inquadra(nome, vistaFinale, durata = 0.55) {
     const shot = INQUADRATURE[nome] || INQUADRATURE.BANCO;
     const vuoleCassetto = (vistaFinale.cassetto || 0) > 0.45 && Boolean(this.cassetto?.userData.sulBanco);
-    if (this.shot === nome && this.cameraFerma() && durata < 0.2 && this._miraCassetto === vuoleCassetto) {
+    const vuoleTubo = nome === 'DETTAGLIO-TAPPO-APERTO' && (vistaFinale.torcia?.pulizia || 0) >= 0.98 && !vuoleCassetto;
+    if (this.shot === nome && this.cameraFerma() && durata < 0.2 && this._miraCassetto === vuoleCassetto && this._miraTubo === vuoleTubo) {
       this.meta = vistaFinale;
       this.sporco = true;
       return;
     }
     this._miraCassetto = vuoleCassetto;
+    this._miraTubo = vuoleTubo;
     if (vuoleCassetto) durata = Math.max(durata, 0.55);
     this.shot = nome;
     const prima = this.visuale;
     this.scrivi(vistaFinale, 1);
     this.sistemaPile(vistaFinale);
     this.scene.updateMatrixWorld(true);
-    const nodo = this.nodo(shot.nodo) || this.torcia;
+    const nodo = this.nodo(vuoleTubo ? 'sede_a' : shot.nodo) || this.torcia;
     nodo.getWorldPosition(this._v);
     if (shot.anche) {
       const altro = this.nodo(shot.anche);
@@ -679,6 +709,10 @@ export class Scena {
       this.zoomT -= dt;
       const k = Math.max(0, this.zoomT / 0.18);
       this.vetro.scale.setScalar(1 + 0.03 * Math.sin(k * Math.PI));
+      this.sporco = true;
+    }
+    if (this.allarmeAnello > 0) {
+      this.allarmeAnello -= dt;
       this.sporco = true;
     }
     if (this.cameraT < 1) {

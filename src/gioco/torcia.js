@@ -75,6 +75,14 @@ function aggiungiAiuti(radice, procedurale) {
     freccia.name = 'freccia';
     freccia.rotation.x = Math.PI / 2;
     freccia.visible = false;
+    const angolo = Math.PI * 0.9;
+    const punta = new THREE.Mesh(
+      new THREE.ConeGeometry(0.0032, 0.007, 5),
+      pittura('#3c291c', { unico: true }),
+    );
+    punta.position.set(Math.cos(angolo) * 0.016, Math.sin(angolo) * 0.016, 0);
+    punta.rotation.z = angolo - Math.PI / 2;
+    freccia.add(punta);
     vite.add(freccia);
     vite.userData.baseY = vite.position.y;
   }
@@ -87,6 +95,17 @@ function aggiungiAiuti(radice, procedurale) {
     if (!nodo) continue;
     nodo.userData.basePos = nodo.position.clone();
     nodo.userData.baseQuat = nodo.quaternion.clone();
+  }
+  for (const nome of ['sede_a', 'sede_b']) {
+    const sede = radice.getObjectByName(nome);
+    if (!sede || sede.getObjectByName(`${nome}_segno`)) continue;
+    const segno = new THREE.Mesh(
+      new THREE.RingGeometry(0.009, 0.013, 18),
+      pittura('#f0b86e', { unico: true }),
+    );
+    segno.name = `${nome}_segno`;
+    segno.rotation.x = Math.PI / 2;
+    sede.add(segno);
   }
   if (procedurale) {
     for (const nome of ['pila_a', 'pila_b']) {
@@ -203,7 +222,9 @@ export function posaTappo(tappo, vite, aperto, giri) {
   if (!tappo) return;
   const base = tappo.userData.baseY ?? BASE_TAPPO_Y;
   const corsa = THREE.MathUtils.clamp(aperto || 0, 0, 1);
-  tappo.position.x = 0;
+  // Svita sull'asse. Aperto, il tappo si sposta di lato: non copre pile e sedi.
+  const diLato = THREE.MathUtils.smoothstep(corsa, 0.78, 1) * 0.1;
+  tappo.position.x = diLato;
   tappo.position.z = 0;
   tappo.position.y = base - corsa * 0.05;
   tappo.rotation.x = 0;
