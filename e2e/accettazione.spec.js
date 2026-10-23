@@ -2,7 +2,9 @@ import { expect, test } from '@playwright/test';
 import { attendiPasso, leggi, prepara, punto, puntatore, shot, strumento, tieni, visibile } from './gioca.js';
 
 test.describe('accettazione', () => {
-  test.skip(({ }, info) => info.project.name !== 'telefono', 'ritratto touch');
+  test.beforeEach(({}, info) => {
+    test.skip(info.project.name !== 'telefono', 'ritratto touch');
+  });
 
   test('T1 la saracinesca è il primo gesto e il bottone arriva entro 12 s', async ({ page }) => {
     const t0 = Date.now();
@@ -22,17 +24,17 @@ test.describe('accettazione', () => {
     await prepara(page, '?debug=zone&passo=b7-svita');
     await attendiPasso(page, 'b7-svita');
     await strumento(page, 'cacciavite', false);
-    await page.waitForFunction(() => Number(document.querySelector('#app').dataset.esitazione) > 3.2);
+    await page.waitForFunction(() => Number(document.querySelector('#app').dataset.esitazione) > 3.2, null, { timeout: 20000 });
     expect(await page.locator('#app').getAttribute('data-aiuto')).toBe('0');
-    await page.waitForFunction(() => document.querySelector('#app').dataset.ta1 !== '');
+    await page.waitForFunction(() => document.querySelector('#app').dataset.ta1 !== '', null, { timeout: 20000 });
     const a1 = Number(await page.locator('#app').getAttribute('data-ta1'));
     expect(a1).toBeGreaterThan(3.7);
     expect(a1).toBeLessThan(4.4);
-    await page.waitForFunction(() => document.querySelector('#app').dataset.ta2 !== '');
+    await page.waitForFunction(() => document.querySelector('#app').dataset.ta2 !== '', null, { timeout: 20000 });
     const a2 = Number(await page.locator('#app').getAttribute('data-ta2'));
     expect(a2).toBeGreaterThan(5.7);
     expect(a2).toBeLessThan(6.4);
-    await page.waitForFunction(() => document.querySelector('#app').dataset.bolla === 'Gira. Come per aprire un barattolo.');
+    await page.waitForFunction(() => document.querySelector('#app').dataset.bolla === 'Gira. Come per aprire un barattolo.', null, { timeout: 20000 });
     const a3 = Number(await page.locator('#app').getAttribute('data-ta3'));
     expect(a3).toBeGreaterThan(11.7);
     expect(a3).toBeLessThan(12.5);
@@ -43,13 +45,26 @@ test.describe('accettazione', () => {
     await attendiPasso(page, 'b11-chiudi');
     const prima = (await leggi(page)).progresso;
     const vite = await punto(page, 'vite');
+    await page.evaluate(() => {
+      const nodo = document.querySelector('#correzione');
+      window.__downAt = 0;
+      window.__corrAt = 0;
+      const segna = () => { if (!window.__corrAt) window.__downAt = performance.now(); };
+      document.addEventListener('pointerdown', segna, true);
+      document.addEventListener('pointermove', segna, true);
+      new MutationObserver(() => {
+        if (!nodo.hidden && nodo.textContent) window.__corrAt = performance.now();
+      }).observe(nodo, { attributes: true, childList: true, characterData: true, subtree: true });
+    });
     const detti = [];
     for (const id of ['lente', 'pennello']) {
       await strumento(page, id, false);
-      const t0 = Date.now();
+      await page.evaluate(() => { window.__downAt = 0; window.__corrAt = 0; });
       await puntatore(page, [vite], false);
       await expect(page.locator('#correzione')).toBeVisible();
-      expect(Date.now() - t0).toBeLessThan(300);
+      const ritardo = await page.evaluate(() => window.__corrAt - window.__downAt);
+      expect(ritardo).toBeGreaterThanOrEqual(0);
+      expect(ritardo).toBeLessThan(300);
       detti.push(await page.locator('#correzione').innerText());
     }
     await strumento(page, 'cacciavite', false);
@@ -58,14 +73,45 @@ test.describe('accettazione', () => {
       const a = i * 0.2;
       punti.push({ x: vite.x + Math.cos(a) * 70, y: vite.y - Math.sin(a) * 70 });
     }
-    const t0 = Date.now();
+    await page.evaluate(() => { window.__downAt = 0; window.__corrAt = 0; });
     await puntatore(page, punti, false);
     await expect(page.locator('#correzione')).toBeVisible();
-    expect(Date.now() - t0).toBeLessThan(800);
+    const ritardo = await page.evaluate(() => window.__corrAt - window.__downAt);
+    expect(ritardo).toBeGreaterThanOrEqual(0);
+    expect(ritardo).toBeLessThan(300);
     detti.push(await page.locator('#correzione').innerText());
     expect(new Set(detti).size).toBe(3);
     expect((await leggi(page)).progresso).toBeCloseTo(prima, 2);
     expect((await leggi(page)).id).toBe('b11-chiudi');
+  });
+
+  test('T5 il gesto durante la transizione parte al fermo e non si azzera', async ({ page }) => {
+    await prepara(page, '?debug=zone&passo=b6-lente');
+    await attendiPasso(page, 'b6-lente');
+    await strumento(page, 'lente', false);
+    const macchia = await punto(page, 'macchia');
+    await tieni(page, { x: macchia.x, y: macchia.y + 70 }, 700, false);
+    await page.waitForFunction(() => {
+      const app = document.querySelector('#app');
+      return app.dataset.passo === 'b7-svita' && app.dataset.fermo === '0';
+    }, null, { timeout: 10000 });
+    const box = page.viewportSize();
+    const cx = box.width / 2;
+    const cy = box.height / 2;
+    const punti = [];
+    for (let i = 0; i <= 40; i += 1) {
+      const a = (i / 40) * Math.PI * 2 * 0.8;
+      punti.push({ x: cx + Math.cos(a) * 64, y: cy - Math.sin(a) * 64 });
+    }
+    await strumento(page, 'cacciavite', false);
+    await puntatore(page, punti, false);
+    await attendiPasso(page, 'b7-svita');
+    const prima = await leggi(page);
+    expect(prima.progresso).toBeGreaterThan(0.15);
+    await page.waitForTimeout(400);
+    const dopo = await leggi(page);
+    expect(dopo.progresso).toBeCloseTo(prima.progresso, 2);
+    expect(dopo.id).toBe('b7-svita');
   });
 
   test('T6 il mezzo giro resta dopo il ricarico', async ({ page }) => {

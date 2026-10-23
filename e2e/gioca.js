@@ -15,9 +15,9 @@ export async function prepara(page, query = '') {
   await page.goto(`/la-bottega/${query}`);
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('#saracinesca');
-  await page.waitForSelector('#app[data-pronto="1"]');
-  await page.waitForFunction(() => document.querySelector('#app').dataset.glb === 'torcia');
+  await page.waitForSelector('#saracinesca', { state: 'attached', timeout: 20000 });
+  await page.waitForSelector('#app[data-pronto="1"]', { timeout: 20000 });
+  await page.waitForFunction(() => document.querySelector('#app').dataset.glb === 'torcia', null, { timeout: 20000 });
   return errori;
 }
 
@@ -133,7 +133,7 @@ export async function strumento(page, id, mouse) {
   const { w, h } = schermo(page);
   visibile({ x: box.x + box.width / 2, y: box.y + box.height / 2 }, w, h, id);
   await puntatore(page, [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }], mouse);
-  await page.waitForFunction((atteso) => document.querySelector('#app').dataset.strumento === atteso, id);
+  await page.waitForFunction((atteso) => document.querySelector('#app').dataset.strumento === atteso, id, { timeout: 5000 });
 }
 
 function cerchio(cx, cy, r, senso, giri) {

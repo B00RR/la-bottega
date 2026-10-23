@@ -9,7 +9,7 @@ Gioco mobile in italiano: il garzone di un riparatore di quartiere. Ora c'è sol
 - Prova automatica che **gioca** il tutorial: `npm run test:e2e`.
 - Pubblicazione: push su `main`. Il workflow `.github/workflows/pages.yml` pubblica su <https://b00rr.github.io/la-bottega/>.
 
-Il design del tutorial è in `docs/DESIGN_TUTORIAL.md`. Le licenze degli asset sono in `docs/LICENZE_ASSET.md`.
+Il copione dei primi istanti è in `docs/PRIMI_ISTANTI.md`. `docs/DESIGN_TUTORIAL.md` resta la storia della v1. Le licenze degli asset sono in `docs/LICENZE_ASSET.md`.
 
 ## Skill per gli agenti
 
@@ -28,21 +28,23 @@ Per questo tutorial il router ha indicato:
 | Ordine | Skill | Perché |
 | --- | --- | --- |
 | 1 | `threejs-scene-setup` | Scena, camera, renderer, ciclo `setAnimationLoop`, three **r186** |
-| 2 | `threejs-materials-lighting` | PBR, luci, ombre, ambiente procedurale |
-| — | `threejs-gltf-loading` | Non usata: i modelli sono geometria procedurale, non glTF |
-| 3 | `input-systems` | Gesti come azioni, dito e mouse sullo stesso strato, aree larghe |
-| 4 | `game-ui-ux` | Ancore, area sicura, pila di schermate, testi leggibili |
-| 5 | `dialogue-systems` | Battute a dati, con id di stringa |
-| 6 | `save-systems` | Salvataggio versionato, ricostruito dai dati |
-| 7 | `create-game-assets` | Direzione visiva low-poly, pastello caldo, niente asset di terzi |
-| 8 | `game-feel` | Feedback breve a livelli, senza scuotere la vista |
+| 2 | `threejs-materials-lighting` | Due luci, niente ombre né post-processing: il budget dei primi istanti vince sullo stile |
+| 3 | `threejs-gltf-loading` | `public/modelli/torcia.glb` per nome nodo, con riserva procedurale |
+| 4 | `input-systems` | Gesti come azioni, dito e mouse sullo stesso strato, aree larghe |
+| 5 | `game-ui-ux` | Ancore, area sicura, pila di schermate, testi leggibili |
+| 6 | `dialogue-systems` | Battute a dati, con id di stringa |
+| 7 | `save-systems` | Salvataggio versionato, ricostruito dai dati |
+| 8 | `create-game-assets` | Direzione visiva low-poly, pastello caldo |
+| 9 | `game-feel` | Feedback breve a livelli, senza scuotere la vista |
 
 ## Cosa c'è adesso
 
-Il tutorial si apre in bottega, senza menu. Ettore fa provare la torcia (guardare, analizzare, smontare, riparare, sostituire) e poi il telecomando, con un attrezzo nuovo alla volta. Un oggetto nuovo si aggiunge nei dati in `src/dati/`, non con codice dedicato.
+Il tutorial segue `docs/PRIMI_ISTANTI.md`: saracinesca, torcia (il tappo si svita sull'asse del GLB), telecomando, chiusura nella finzione. Ettore non si nomina sulla bolla. Una bolla non fa avanzare il passo. Il copione nel tutorial è di 158 parole.
 
-Il progresso sta in `localStorage` (`la-bottega:salvataggio`, versione 1) e un ricaricamento riprende il passo corrente.
+La torcia arriva da `public/modelli/torcia.glb`. Telecomando, attrezzi e banco restano procedurali finché non arrivano i loro GLB. Il progresso sta in `localStorage` (`la-bottega:salvataggio`, versione 2, con copia `.bak`). Un salvataggio della v1 ricomincia da capo.
 
 ## Verifica
 
-La prova sul telefono (`npx playwright test --project=telefono -g "il telefono gioca"`) è arrivata fino a «Ossido. Prendi il pennellino.» e poi è scaduta (4 minuti) durante il ricaricamento. Apertura, sguardo, lente, esitazione e svitamento sono stati giocati con il dito. Restano da chiudere nello stesso giro: strumento sbagliato, ricarico a metà strofinata, telecomando, schermata finale e il giro col mouse sul desktop. Il salto del tutorial dalle impostazioni era già passato in una prova precedente.
+`npx playwright test` sul ritratto touch 390×844 arriva a «Domani» con torcia e telecomando, e i test T1, T3, T4, T5, T6, T7, T8, T9, T13 e T14 passano. Il salto dalle impostazioni passa anche sul laptop 1280×800, che non va in pausa. Il dito di prova tocca solo bersagli dentro lo schermo.
+
+Non sono state fatte le prove umane T2, T10, T11 e T12, né la misura dei 55 fps su un Android vero. In headless, con DPR 1, il budget di triangoli, draw call e 20 fps tiene.

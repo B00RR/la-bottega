@@ -185,8 +185,11 @@ export class Gioco {
       if (eTap(dt, dist) || this.apertura >= 0.4) this.chiudiSaracinesca();
       this.shDown = null;
     }
-    this.attesa = null;
-    this.codaPunti = [];
+    if (this.attesa) {
+      this.codaPunti.push({ x, y });
+      this.rilascioInAttesa = { x, y };
+      return;
+    }
     if (this.ignora) {
       this.ignora = false;
       this.memorizza();
@@ -197,11 +200,17 @@ export class Gioco {
   }
 
   scaricaCoda() {
-    if (!this.premuto || !this.attesa) return;
+    if (!this.attesa) return;
+    const su = this.rilascioInAttesa;
     this.inizia(this.attesa.x, this.attesa.y);
     for (const p of this.codaPunti) this.muovi(p.x, p.y);
     this.attesa = null;
     this.codaPunti = [];
+    this.rilascioInAttesa = null;
+    if (su) {
+      this.rilascia(su.x, su.y);
+      this.memorizza();
+    }
   }
 
   chiudiSaracinesca() {
@@ -892,7 +901,7 @@ export class Gioco {
   chiudiBolla() {
     this.bolla = null;
     this.app.dataset.bolla = '';
-    if (this.coda.length === 0) this.consecutive = 0;
+    if (this.coda.length === 0 || this.debugCorr) this.consecutive = 0;
     this.mostraBolla();
   }
 

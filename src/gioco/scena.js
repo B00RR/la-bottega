@@ -109,7 +109,7 @@ export class Scena {
     this.flashT = 0;
     this.zoomT = 0;
     this.squashT = 0;
-    this.ultimoTv = 0;
+    this.ultimoTv = -1;
 
     this.ridimensiona();
     this.prontaGlb = montaTorcia(this.modelloTorcia).then((info) => {
@@ -264,8 +264,8 @@ export class Scena {
     if (filo?.material) filo.material.emissiveIntensity = c.filoVisto && (c.nastro || 0) < 0.7 ? 0.7 : 0;
     if (molla?.material) molla.material.emissiveIntensity = c.mollaVista && c.molla < 0.5 ? 0.45 : 0;
 
-    if ((vista.cassetto || 0) > 0.45) this.ancora(this.cassetto, 0.78, 0.6, 0.5);
-    if ((t.pileVecchie || 0) > 0) this.ancora(this.vassoio, 0.18, 0.62, 0.5);
+    if ((vista.cassetto || 0) > 0.45) this.ancora(this.cassetto, 0.52, 0.56, 0.62);
+    if ((t.pileVecchie || 0) > 0) this.ancora(this.vassoio, 0.28, 0.62, 0.62);
     if ((vista.tv || 0) > 0) {
       this.ancora(this.tv, 0.62, 0.16, 1.15);
       this.tv.lookAt(this.camera.position);
@@ -354,7 +354,7 @@ export class Scena {
         return;
       }
       this.cassetto.attach(nodo);
-      nodo.position.set(nome.endsWith('a') ? -0.03 : 0.03, 0.04, 0.02);
+      nodo.position.set(nome.endsWith('a') ? -0.016 : 0.016, 0.03, 0.01);
       nodo.rotation.set(Math.PI / 2, 0, 0);
       nodo.visible = cassettoAperto;
     };
@@ -624,7 +624,10 @@ export class Scena {
       ctx.fillRect(36, 12, 8, 14);
     }
     this.schermo.userData.texture.needsUpdate = true;
-    this.schermo.material.emissiveIntensity = accesa ? 0.9 : 0.05;
+    const materiale = this.schermo.material;
+    materiale.color.set('#ffffff');
+    materiale.emissive.set(accesa ? '#ffffff' : '#3c291c');
+    materiale.emissiveIntensity = accesa ? 1 : 0.2;
   }
 
   proietta(nome) {

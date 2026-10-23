@@ -23,7 +23,7 @@ export class Interfaccia {
     this.taccuino = app.querySelector('#taccuino');
     this.impostazioni = app.querySelector('#impostazioni');
     this.azioni = app.querySelector('#azioni');
-    this.paesaggio = app.querySelector('#paesaggio');
+    this.paesaggioEl = app.querySelector('#paesaggio');
     this.cartello = app.querySelector('#cartello');
     this.gessoEl = app.querySelector('#gesso');
     this.maniglia = app.querySelector('#maniglia');
@@ -235,7 +235,7 @@ export class Interfaccia {
   }
 
   paesaggio(attivo) {
-    this.paesaggio.hidden = !attivo;
+    this.paesaggioEl.hidden = !attivo;
   }
 
   correzione(testo, x, y) {
@@ -262,8 +262,16 @@ function nomeDelPunto(gioco) {
 }
 
 function appEvita(nodo, fn) {
+  let appena = 0;
+  nodo.addEventListener('pointerup', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    appena = performance.now();
+    fn();
+  });
   nodo.addEventListener('click', (e) => {
     e.stopPropagation();
+    if (performance.now() - appena < 500) return;
     fn();
   });
 }

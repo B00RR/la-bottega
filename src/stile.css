@@ -92,7 +92,7 @@ button { font: inherit; color: inherit; }
 @keyframes pop { from { transform: scale(0.4); } to { transform: scale(1); } }
 
 #taccuino, #impostazioni {
-  position: absolute; z-index: 24; inset: auto 8% 12% 8%;
+  position: absolute; z-index: 45; inset: auto 8% 12% 8%;
   background: #fff6ea; border: 2px solid var(--inchiostro); border-radius: 18px; padding: 16px;
   display: flex; flex-direction: column; gap: 10px;
 }
