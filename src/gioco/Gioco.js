@@ -316,7 +316,10 @@ export class Gioco {
     const centro = this.scena.proietta(passo.bersaglio);
     if (!centro) return;
     const distanza = this.dist(pos, centro);
-    if (distanza < 16 || distanza > 125) return;
+    if (distanza < 16 || distanza > 125) {
+      this.ultimoAngolo = null;
+      return;
+    }
     const angolo = Math.atan2(pos.y - centro.y, pos.x - centro.x);
     if (this.ultimoAngolo == null) {
       this.ultimoAngolo = angolo;
@@ -327,6 +330,7 @@ export class Gioco {
     while (delta > Math.PI) delta -= Math.PI * 2;
     while (delta < -Math.PI) delta += Math.PI * 2;
     this.ultimoAngolo = angolo;
+    if (Math.abs(delta) > 1.2) return;
     this.progresso += delta;
     this.nelPunto = true;
     if (passo.gesto === 'circolare') {
@@ -521,6 +525,7 @@ export class Gioco {
     app.dataset.linea = String(this.linea);
     app.dataset.direzione = passo.direzione != null ? String(passo.direzione) : '';
     app.dataset.strumentoAttivo = this.strumento || '';
+    app.dataset.progresso = (this.progresso || 0).toFixed(2);
     const bersaglio = passo.bersaglio ? this.scena.proietta(passo.bersaglio) : null;
     app.dataset.bersaglio = bersaglio ? `${bersaglio.x.toFixed(1)},${bersaglio.y.toFixed(1)}` : '';
     const ids = passo.bersagli ?? (passo.gesto === 'estrai' ? (passo.parti ?? []) : passo.bersaglio ? [passo.bersaglio] : []);

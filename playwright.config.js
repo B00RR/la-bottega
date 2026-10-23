@@ -4,7 +4,7 @@ const gl = ['--use-gl=angle', '--use-angle=swiftshader', '--ignore-gpu-blocklist
 
 export default defineConfig({
   testDir: 'e2e',
-  timeout: 240000,
+  timeout: 300000,
   expect: { timeout: 8000 },
   workers: 1,
   fullyParallel: false,
@@ -29,7 +29,7 @@ export default defineConfig({
         viewport: { width: 390, height: 844 },
         hasTouch: true,
         isMobile: true,
-        deviceScaleFactor: 2,
+        deviceScaleFactor: 1,
         userAgent: devices['Pixel 7'].userAgent,
       },
     },

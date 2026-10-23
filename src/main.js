@@ -49,7 +49,7 @@ const timer = new THREE.Timer();
 timer.connect(document);
 scena.renderer.setAnimationLoop((tempo) => {
   timer.update(tempo);
-  const dt = Math.min(timer.getDelta(), 0.05);
+  const dt = Math.min(timer.getDelta(), 0.1);
   gioco.aggiorna(dt);
   scena.renderer.render(scena.scene, scena.camera);
 });

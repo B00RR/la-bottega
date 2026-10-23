@@ -53,7 +53,6 @@ export async function puntatore(page, punti, mouse) {
     await page.mouse.down();
     for (let i = 1; i < punti.length; i += 1) {
       await page.mouse.move(punti[i].x, punti[i].y);
-      await page.waitForTimeout(16);
     }
     await page.mouse.up();
     return;
@@ -63,7 +62,6 @@ export async function puntatore(page, punti, mouse) {
   await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [punto(punti[0])] });
   for (let i = 1; i < punti.length; i += 1) {
     await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [punto(punti[i])] });
-    await page.waitForTimeout(16);
   }
   await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 }
@@ -79,7 +77,7 @@ function linea(a, b, passi = 12) {
 
 function cerchio(cx, cy, raggio, direzione, giri = 1) {
   const punti = [];
-  const passi = Math.ceil(32 * giri);
+  const passi = Math.ceil(18 * giri);
   for (let i = 0; i <= passi; i += 1) {
     const a = direzione * (i / passi) * Math.PI * 2 * giri;
     punti.push({ x: cx + Math.cos(a) * raggio, y: cy + Math.sin(a) * raggio });
@@ -87,13 +85,29 @@ function cerchio(cx, cy, raggio, direzione, giri = 1) {
   return punti;
 }
 
+function vicini(a, b) {
+  const [ax, ay] = a.split(',').map(Number);
+  const [bx, by] = b.split(',').map(Number);
+  return Math.hypot(ax - bx, ay - by) < 3;
+}
+
 async function stabile(page) {
   let prima = null;
-  for (let i = 0; i < 25; i += 1) {
-    const ora = await page.getAttribute('#app', 'data-bersaglio');
-    if (ora && ora === prima) return;
+  let fermi = 0;
+  for (let i = 0; i < 40; i += 1) {
+    const ora = await page.evaluate(() => {
+      const app = document.querySelector('#app');
+      return { b: app.dataset.bersaglio || '', f: app.dataset.fotogrammi || '' };
+    });
+    const stessoFotogramma = prima && ora.f === prima.f;
+    if (!stessoFotogramma && ora.b && prima && vicini(ora.b, prima.b)) {
+      fermi += 1;
+      if (fermi >= 2) return;
+    } else if (!prima || !ora.b || !vicini(ora.b, prima.b)) {
+      fermi = 0;
+    }
     prima = ora;
-    await page.waitForTimeout(80);
+    await page.waitForTimeout(50);
   }
 }
 
@@ -200,7 +214,7 @@ async function fincheCambia(page, mouse) {
     ultimo = await page.getAttribute('#app', 'data-bersaglio');
     await esegui(page, mouse);
     try {
-      await page.waitForFunction((prima) => document.querySelector('#app').dataset.passo !== prima, id, { timeout: 1800 });
+      await page.waitForFunction((prima) => document.querySelector('#app').dataset.passo !== prima, id, { timeout: 1200 });
       return;
     } catch {
       /* un altro giro, il gesto tiene il progresso già fatto */
@@ -242,7 +256,8 @@ export async function giocaTutorial(page, { mouse, prove, prefisso }) {
   for (let n = 0; n < 45; n += 1) {
     const passo = await leggi(page);
     if (passo.id === 'fine') {
-      await expect(page.locator('#fine h1')).toHaveText('Fine del tutorial');
+      const titolo = await page.evaluate(() => document.querySelector('#fine h1')?.textContent || '');
+      expect(titolo).toBe('Fine del tutorial');
       await shot(page, `${prefisso}-fine`);
       log.push({ id: 'fine', esito: 'ok' });
       return log;
@@ -273,7 +288,7 @@ export async function giocaTutorial(page, { mouse, prove, prefisso }) {
         expect(passo.stato.tappo).toBeGreaterThan(0.5);
         await page.reload();
         await page.waitForSelector('#app[data-pronto="1"]');
-        await expect(page.locator('#app')).toHaveAttribute('data-passo', 'intro-pennello');
+        await page.waitForFunction(() => document.querySelector('#app').dataset.passo === 'intro-pennello');
         const dopo = await leggi(page);
         expect(dopo.stato.tappo).toBeGreaterThan(0.5);
         await shot(page, `${prefisso}-ricarico-svita`);
@@ -318,15 +333,16 @@ export async function giocaTutorial(page, { mouse, prove, prefisso }) {
         const punti = [{ x: cx - 20, y: cy }];
         for (let i = 0; i < 6; i += 1) punti.push({ x: cx + (i % 2 ? 24 : -24), y: cy });
         await puntatore(page, punti, mouse);
-        await expect(page.locator('#correzione')).toContainText(/ragazzo|cacciavite/i);
-        await expect(page.locator('#app')).toHaveAttribute('data-passo', 'torcia-strofina');
-        expect((await leggi(page)).stato.pulizia).toBe(0);
+        await page.waitForFunction(() => /ragazzo|cacciavite/i.test(document.querySelector('#correzione')?.textContent || ''));
+        const dopoSbaglio = await leggi(page);
+        expect(dopoSbaglio.id).toBe('torcia-strofina');
+        expect(dopoSbaglio.stato.pulizia).toBe(0);
         await shot(page, `${prefisso}-strumento-sbagliato`);
         await toccaBottone(page, 'pennello', mouse);
         await puntatore(page, linea({ x: cx - 10, y: cy }, { x: cx + 16, y: cy }, 4), mouse);
         await page.reload();
         await page.waitForSelector('#app[data-pronto="1"]');
-        await expect(page.locator('#app')).toHaveAttribute('data-passo', 'torcia-strofina');
+        await page.waitForFunction(() => document.querySelector('#app').dataset.passo === 'torcia-strofina');
         expect((await leggi(page)).stato.pulizia).toBe(0);
         await shot(page, `${prefisso}-ricarico-strofina`);
         log.push({ id: 'strumento-sbagliato', esito: 'ok' });

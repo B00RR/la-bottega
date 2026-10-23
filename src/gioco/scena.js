@@ -435,21 +435,42 @@ export class Scena {
     this.visibilePrima[id] = log.visibile;
     gruppo.visible = log.visibile;
     if (!log.visibile) return;
-    const k = 1 - Math.exp(-dt * 5.5);
-    gruppo.position.x += (destinazione.pos[0] - gruppo.position.x) * k;
-    gruppo.position.y += (destinazione.pos[1] - gruppo.position.y) * k;
-    gruppo.position.z += (destinazione.pos[2] - gruppo.position.z) * k;
     const giro = THREE.MathUtils.clamp(anteprima.giro?.[id] ?? 0, -1.2, 1.2);
-    gruppo.rotation.x += (destinazione.rot[0] - gruppo.rotation.x) * k;
-    gruppo.rotation.y += (destinazione.rot[1] + giro - gruppo.rotation.y) * k;
-    gruppo.rotation.z += (destinazione.rot[2] - gruppo.rotation.z) * k;
+    const meta = {
+      x: destinazione.pos[0],
+      y: destinazione.pos[1],
+      z: destinazione.pos[2],
+      rx: destinazione.rot[0],
+      ry: destinazione.rot[1] + giro,
+      rz: destinazione.rot[2],
+    };
+    const dx = meta.x - gruppo.position.x;
+    const dy = meta.y - gruppo.position.y;
+    const dz = meta.z - gruppo.position.z;
+    const rx = meta.rx - gruppo.rotation.x;
+    const ry = meta.ry - gruppo.rotation.y;
+    const rz = meta.rz - gruppo.rotation.z;
+    if (dx * dx + dy * dy + dz * dz < 1e-6 && rx * rx + ry * ry + rz * rz < 1e-5) {
+      gruppo.position.set(meta.x, meta.y, meta.z);
+      gruppo.rotation.set(meta.rx, meta.ry, meta.rz);
+      return;
+    }
+    const k = 1 - Math.exp(-dt * 8);
+    gruppo.position.x += dx * k;
+    gruppo.position.y += dy * k;
+    gruppo.position.z += dz * k;
+    gruppo.rotation.x += rx * k;
+    gruppo.rotation.y += ry * k;
+    gruppo.rotation.z += rz * k;
   }
 
   aggiornaTorcia(mondo, anteprima, dt) {
     const k = 1 - Math.exp(-dt * 8);
     const tappo = this.nodi.get('tappo');
     const aperto = mondo.parti.tappo.aperto;
-    tappo.rotation.z += (-aperto * 2.15 - tappo.rotation.z) * k;
+    const metaTappo = -aperto * 2.15;
+    if (Math.abs(metaTappo - tappo.rotation.z) < 0.02) tappo.rotation.z = metaTappo;
+    else tappo.rotation.z += (metaTappo - tappo.rotation.z) * k;
     const dentro = Math.abs(tappo.rotation.z) > 0.7;
     this.nodi.get('contatto').visible = dentro;
     this.nodi.get('pila_a').visible = dentro && !mondo.parti.pila_a.estratta;
