@@ -7,6 +7,7 @@ Nel gioco non ci sono modelli, texture, font o suoni di terzi.
 - `public/modelli/telecomando.glb` è un modello originale per La Bottega, generato con Blender 4.2 dallo script `strumenti/modelli/telecomando.py`, nessun asset di terzi, nessuna AI, stessi diritti del progetto.
 - `public/modelli/lente.glb`, `cacciavite.glb`, `pennellino.glb`, `leva.glb`, `pinzette.glb` e `nastro.glb` sono modelli originali per La Bottega, generati con Blender 4.2 dagli script omonimi in `strumenti/modelli/`, nessun asset di terzi, nessuna AI, stessi diritti del progetto.
 - `public/modelli/banco.glb` è un modello originale per La Bottega, generato con Blender 4.2 dallo script `strumenti/modelli/banco.py`, nessun asset di terzi, nessuna AI, stessi diritti del progetto.
+- `public/modelli/ettore.glb` è un personaggio originale per La Bottega (Maestro Ettore), modellato con Blender 4.2 dallo script `strumenti/modelli/ettore.py` (con `comune.py`), nessuna fonte esterna, nessun asset di terzi, nessuna AI, stessi diritti del progetto.
 - I suoni sono oscillatori del Web Audio, generati al momento.
 - Il carattere è lo stack di sistema (`Segoe UI`, `system-ui`), senza font scaricati.
 - La texture della televisione è un canvas disegnato a runtime.
