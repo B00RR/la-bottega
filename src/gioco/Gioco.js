@@ -822,7 +822,9 @@ export class Gioco {
     if (p.musica) this.audio.strato(p.musica);
     if (p.id === 'b7-svita') this.audio.clac();
     if (p.dopo?.length) {
+      this.coda = [];
       this.consecutive = 0;
+      if (p.grande === 'torcia' && this.bolla) this.chiudiBolla();
       this.accoda(p.dopo);
     }
     this.progressoGesto = 0;
@@ -935,7 +937,7 @@ export class Gioco {
   chiudiBolla() {
     this.bolla = null;
     this.app.dataset.bolla = '';
-    if (this.coda.length === 0 || this.debugCorr) this.consecutive = 0;
+    this.consecutive = 0;
     this.mostraBolla();
   }
 
