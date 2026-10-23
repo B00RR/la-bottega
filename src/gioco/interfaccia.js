@@ -1,12 +1,13 @@
 import { t } from '../dati/testi.js';
 
+const ORDINE = ['lente', 'cacciavite', 'pennello', 'leva', 'pinzette', 'nastro'];
 const ICONE = {
-  lente: '<circle cx="14" cy="14" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M18 18 l5 5" stroke="currentColor" stroke-width="2"/>',
-  cacciavite: '<path d="M8 20 L16 8" stroke="currentColor" stroke-width="2"/><path d="M14 6 h6 v4 h-6 z" fill="currentColor"/>',
-  pennello: '<path d="M8 22 L16 10" stroke="currentColor" stroke-width="2"/><path d="M14 6 h7 v5 h-7 z" fill="#e8977c"/>',
-  leva: '<path d="M6 18 L20 8" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>',
-  pinzette: '<path d="M10 6 L14 16 L18 6" fill="none" stroke="currentColor" stroke-width="2"/>',
-  nastro: '<circle cx="14" cy="14" r="6" fill="none" stroke="#f0b86e" stroke-width="3"/><circle cx="14" cy="14" r="2" fill="currentColor"/>',
+  lente: '<circle cx="16" cy="16" r="8" fill="none" stroke="#3c291c" stroke-width="2.4"/><circle cx="16" cy="16" r="5" fill="#d7ecf2" fill-opacity="0.7"/><path d="M22 22 l7 7" stroke="#c4844e" stroke-width="3" stroke-linecap="round"/>',
+  cacciavite: '<path d="M10 30 L22 12" stroke="#c4844e" stroke-width="3.2" stroke-linecap="round"/><path d="M18 8 h10 l-2 6 h-8 z" fill="#c9bfb4" stroke="#3c291c" stroke-width="1.4"/>',
+  pennello: '<path d="M12 32 L22 14" stroke="#9a5f38" stroke-width="3.2" stroke-linecap="round"/><path d="M16 6 h12 v8 h-12 z" fill="#e8977c" stroke="#3c291c" stroke-width="1.4"/>',
+  leva: '<path d="M6 28 L26 8" stroke="#c9bfb4" stroke-width="4" stroke-linecap="round"/><path d="M6 28 L12 22" stroke="#3c291c" stroke-width="4" stroke-linecap="round"/>',
+  pinzette: '<path d="M12 6 L18 22 L24 6" fill="none" stroke="#c9bfb4" stroke-width="3" stroke-linecap="round"/><path d="M16 18 L18 26 L20 18" fill="none" stroke="#3c291c" stroke-width="2"/>',
+  nastro: '<circle cx="18" cy="18" r="9" fill="none" stroke="#f0b86e" stroke-width="4"/><circle cx="18" cy="18" r="3" fill="#3c291c"/>',
 };
 
 export class Interfaccia {
@@ -33,6 +34,8 @@ export class Interfaccia {
     this.manoFinita = false;
     this.taccuinoTimer = 0;
     this.ultimoStrumenti = '';
+    this.giaDisegnato = false;
+    this.cartelloDomani = null;
   }
 
   collega(gioco) {
@@ -77,11 +80,24 @@ export class Interfaccia {
   saracinesca(apertura, pronta) {
     this.saracinescaEl.style.transform = `translateY(${-105 * apertura}%)`;
     this.saracinescaEl.classList.toggle('aperta', apertura >= 0.98);
+    this.saracinescaEl.classList.toggle('pronta', Boolean(pronta));
     this.maniglia.classList.toggle('pronta', Boolean(pronta));
     const domani = this.gioco?.vista?.cartello === 'domani';
-    this.cartello.textContent = t(domani ? 'ui.domani' : 'ui.cartello');
-    // A metà saracinesca il cartello in alto esce dallo schermo: resta nel lembo visibile.
-    this.cartello.style.top = domani ? '70%' : '18%';
+    if (domani === this.cartelloDomani) return;
+    this.cartelloDomani = domani;
+    this.cartello.classList.toggle('domani', domani);
+    this.cartello.replaceChildren();
+    if (domani) {
+      this.cartello.textContent = t('ui.domani');
+      return;
+    }
+    const nome = document.createElement('span');
+    nome.className = 'nome';
+    nome.textContent = 'La Bottega';
+    const sotto = document.createElement('span');
+    sotto.className = 'sotto';
+    sotto.textContent = 'riparazioni';
+    this.cartello.append(nome, sotto);
   }
 
   gesso(visibile) {
@@ -145,17 +161,26 @@ export class Interfaccia {
   }
 
   disegnaAttrezzi(gioco) {
-    const lista = gioco.vista.strumenti.join(',');
+    const sbloccati = new Set(gioco.vista.strumenti);
+    const lista = ORDINE.map((id) => (sbloccati.has(id) ? id : '·')).join(',');
     if (lista !== this.ultimoStrumenti) {
+      const prima = new Set(this.ultimoStrumenti.split(',').filter((id) => id && id !== '·'));
       this.ultimoStrumenti = lista;
       this.attrezzi.replaceChildren();
-      for (const id of gioco.vista.strumenti) {
+      for (const id of ORDINE) {
+        if (!sbloccati.has(id)) {
+          const incavo = document.createElement('div');
+          incavo.className = 'incavo';
+          this.attrezzi.append(incavo);
+          continue;
+        }
         const bottone = document.createElement('button');
         bottone.type = 'button';
         bottone.className = 'slot';
+        if (this.giaDisegnato && !prima.has(id)) bottone.classList.add('nuovo');
         bottone.dataset.strumento = id;
         bottone.setAttribute('aria-label', id);
-        bottone.innerHTML = `<svg viewBox="0 0 28 28" width="28" height="28" aria-hidden="true">${ICONE[id] || ''}</svg>`;
+        bottone.innerHTML = `<svg viewBox="0 0 40 40" width="28" height="28" aria-hidden="true">${ICONE[id] || ''}</svg>`;
         bottone.addEventListener('pointerdown', (e) => e.stopPropagation());
         bottone.addEventListener('pointerup', (e) => {
           e.stopPropagation();
@@ -163,6 +188,7 @@ export class Interfaccia {
         });
         this.attrezzi.append(bottone);
       }
+      this.giaDisegnato = true;
     }
     for (const bottone of this.attrezzi.querySelectorAll('.slot')) {
       const id = bottone.dataset.strumento;
@@ -211,11 +237,15 @@ export class Interfaccia {
     window.setTimeout(() => { this.volo.hidden = true; }, 700);
   }
 
-  taccuinoAuto(aperto) {
-    if (!aperto) return;
-    this.taccuino.hidden = false;
-    this.taccuino.classList.add('riparato');
-    this.taccuinoTimer = 120;
+  timbroLuce() {
+    const nodo = this.app.querySelector('#cartoncino');
+    if (!nodo) return;
+    nodo.hidden = false;
+    nodo.classList.remove('entra');
+    void nodo.offsetWidth;
+    nodo.classList.add('entra');
+    window.clearTimeout(this.timbroTimer);
+    this.timbroTimer = window.setTimeout(() => { nodo.hidden = true; }, 2000);
   }
 
   apriPina() {
@@ -242,26 +272,13 @@ export class Interfaccia {
 
   fine(visibile) {
     this.azioni.hidden = !visibile;
+    this.cassetta.classList.toggle('via', visibile);
   }
 
   paesaggio(attivo) {
     this.paesaggioEl.hidden = !attivo;
   }
 
-  correzione(testo, x, y) {
-    const nodo = this.app.querySelector('#correzione');
-    if (!nodo || !testo || testo === '…') return;
-    nodo.hidden = false;
-    nodo.textContent = testo;
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    const left = Math.max(12, Math.min(w - 180, (x || w / 2) - 20));
-    const top = Math.max(72, Math.min(h - 160, (y || h / 2) - 64));
-    nodo.style.left = `${left}px`;
-    nodo.style.top = `${top}px`;
-    window.clearTimeout(this.correzioneTimer);
-    this.correzioneTimer = window.setTimeout(() => { nodo.hidden = true; }, 1600);
-  }
 }
 
 function nomeDelPunto(gioco) {

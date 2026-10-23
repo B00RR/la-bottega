@@ -46,26 +46,30 @@ test.describe('accettazione', () => {
     const prima = (await leggi(page)).progresso;
     const vite = await punto(page, 'vite');
     await page.evaluate(() => {
-      const nodo = document.querySelector('#correzione');
+      const nodo = document.querySelector('#bolla .riga');
       window.__downAt = 0;
       window.__corrAt = 0;
+      window.__detto = '';
       const segna = () => { if (!window.__corrAt) window.__downAt = performance.now(); };
       document.addEventListener('pointerdown', segna, true);
       document.addEventListener('pointermove', segna, true);
       new MutationObserver(() => {
-        if (!nodo.hidden && nodo.textContent) window.__corrAt = performance.now();
-      }).observe(nodo, { attributes: true, childList: true, characterData: true, subtree: true });
+        const testo = nodo.textContent || '';
+        if (!testo || testo === window.__detto) return;
+        window.__detto = testo;
+        window.__corrAt = performance.now();
+      }).observe(nodo, { childList: true, characterData: true, subtree: true });
     });
     const detti = [];
     for (const id of ['lente', 'pennello']) {
       await strumento(page, id, false);
       await page.evaluate(() => { window.__downAt = 0; window.__corrAt = 0; });
       await puntatore(page, [vite], false);
-      await expect(page.locator('#correzione')).toBeVisible();
+      await expect(page.locator('#bolla')).toBeVisible();
       const ritardo = await page.evaluate(() => window.__corrAt - window.__downAt);
       expect(ritardo).toBeGreaterThanOrEqual(0);
       expect(ritardo).toBeLessThan(300);
-      detti.push(await page.locator('#correzione').innerText());
+      detti.push((await page.locator('#bolla .riga').innerText()).trim());
     }
     await strumento(page, 'cacciavite', false);
     const punti = [];
@@ -75,11 +79,11 @@ test.describe('accettazione', () => {
     }
     await page.evaluate(() => { window.__downAt = 0; window.__corrAt = 0; });
     await puntatore(page, punti, false);
-    await expect(page.locator('#correzione')).toBeVisible();
+    await expect(page.locator('#bolla')).toBeVisible();
     const ritardo = await page.evaluate(() => window.__corrAt - window.__downAt);
     expect(ritardo).toBeGreaterThanOrEqual(0);
     expect(ritardo).toBeLessThan(300);
-    detti.push(await page.locator('#correzione').innerText());
+    detti.push((await page.locator('#bolla .riga').innerText()).trim());
     expect(new Set(detti).size).toBe(3);
     expect((await leggi(page)).progresso).toBeCloseTo(prima, 2);
     expect((await leggi(page)).id).toBe('b11-chiudi');
@@ -253,10 +257,8 @@ test('attrezzo e verso sbagliati non avanzano, e Rigioca riparte', async ({ page
   const prima = (await leggi(page)).progresso;
   await puntatore(page, giro(-1), false);
   expect((await leggi(page)).progresso).toBeCloseTo(prima, 2);
-  await expect(page.locator('#correzione')).toBeVisible();
-  const nuda = (await page.locator('#correzione').innerText()).trim();
-  expect(nuda.toLowerCase()).toContain('mani');
-  expect((await page.locator('#bolla').innerText()).trim()).not.toBe(nuda);
+  await expect.poll(async () => (await page.locator('#bolla').innerText()).toLowerCase()).toContain('mani');
+  expect(await page.locator('#correzione').count()).toBe(0);
 
   await strumento(page, 'pennello', false);
   await puntatore(page, giro(-1), false);
@@ -268,11 +270,9 @@ test('attrezzo e verso sbagliati non avanzano, e Rigioca riparte', async ({ page
   const dopo = await leggi(page);
   expect(dopo.progresso).toBeCloseTo(prima, 2);
   expect(dopo.id).toBe('b11-chiudi');
-  await expect(page.locator('#correzione')).toBeVisible();
-  const verso = (await page.locator('#correzione').innerText()).trim();
-  expect(verso.toLowerCase()).toContain('destra');
+  await expect.poll(async () => page.locator('#bolla').innerText()).toContain('destra');
+  const verso = (await page.locator('#bolla').innerText()).trim();
   expect(verso.toLowerCase()).not.toContain('quello');
-  expect((await page.locator('#bolla').innerText()).trim()).not.toBe(verso);
 
   await page.goto('/la-bottega/?debug=zone&passo=chiusura');
   await page.waitForSelector('#app[data-pronto="1"]');

@@ -1,3 +1,17 @@
+@font-face {
+  font-family: Nunito;
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("/la-bottega/font/nunito-800.woff2") format("woff2");
+}
+@font-face {
+  font-family: Nunito;
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url("/la-bottega/font/nunito-900.woff2") format("woff2");
+}
 :root {
   --inchiostro: #3c291c;
   --pesca: #f4d2c0;
@@ -6,7 +20,8 @@
   --safe-top: env(safe-area-inset-top);
   --safe-bottom: env(safe-area-inset-bottom);
   color: var(--inchiostro);
-  font-family: Georgia, "Iowan Old Style", serif;
+  font-family: Nunito, "Trebuchet MS", sans-serif;
+  font-weight: 800;
 }
 
 * { box-sizing: border-box; }
@@ -19,33 +34,49 @@ button { font: inherit; color: inherit; }
   position: absolute; z-index: 40; top: calc(var(--safe-top) + 8px); right: 8px;
   width: 44px; height: 44px; opacity: 0.4; border: 0; background: transparent; color: var(--inchiostro);
 }
-#taccuino-btn {
-  position: absolute; z-index: 12; left: 10px; bottom: calc(var(--safe-bottom) + 18px);
-  width: 52px; height: 64px; border: 0; background: transparent;
-}
-#bolla {
-  position: absolute; z-index: 15; top: calc(var(--safe-top) + 10px); left: 16px; right: 64px;
-  background: #fff6ea; border: 2px solid var(--inchiostro); border-radius: 16px;
-  padding: 10px 14px; min-height: 44px;
-}
-#bolla .riga { margin: 0; font-size: 18px; line-height: 1.25; }
-#bolla::after {
-  content: ""; position: absolute; left: 18px; bottom: -10px;
-  border: 8px solid transparent; border-top-color: var(--inchiostro);
-}
-#correzione {
-  position: absolute; z-index: 18; max-width: 168px; margin: 0;
-  background: #fff6ea; border: 2px solid var(--inchiostro); border-radius: 12px;
-  padding: 8px 10px; font-size: 16px; pointer-events: none;
+#chi-parla {
+  position: absolute; z-index: 16; top: calc(var(--safe-top) + 8px); left: 12px;
+  display: flex; align-items: center; gap: 8px; pointer-events: none;
 }
 #medaglione {
-  position: absolute; z-index: 14; top: calc(var(--safe-top) + 8px); left: 8px;
-  width: 28px; height: 28px; border-radius: 50%; background: #f4d2c0; border: 2px solid var(--inchiostro);
+  width: 40px; height: 40px; border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 46%, #edb89a 0 42%, transparent 43%),
+    radial-gradient(circle at 38% 48%, #3c291c 0 2px, transparent 3px),
+    radial-gradient(circle at 62% 48%, #3c291c 0 2px, transparent 3px),
+    #6b4e3d;
+  box-shadow: 0 3px 0 #e2b79e;
+}
+#etichetta {
+  margin: 0; font-size: 12px; font-weight: 900; letter-spacing: 0.14em;
+  text-transform: uppercase; color: #9a5f38;
+}
+#bolla {
+  position: absolute; z-index: 15; top: calc(var(--safe-top) + 56px); left: 16px; right: 64px;
+  background: #fff6ea; border: 0; border-radius: 20px;
+  padding: 12px 16px; min-height: 44px;
+  box-shadow: 0 3px 0 #e2b79e, 0 10px 24px #9a5f3826;
+}
+#bolla .riga { margin: 0; font-size: 19px; font-weight: 800; line-height: 1.2; color: #3c291c; }
+#bolla::after {
+  content: ""; position: absolute; left: 18px; top: -6px;
+  width: 14px; height: 14px; background: #fff6ea; border-radius: 2px;
+  transform: rotate(45deg);
 }
 .testo-grande #bolla .riga { font-size: 22px; }
 @media (max-width: 359px) {
   #bolla .riga { font-size: 16px; }
 }
+#cartoncino {
+  position: absolute; z-index: 17; top: calc(var(--safe-top) + 18px); right: 16px;
+  width: 220px; height: 150px; display: grid; place-items: center;
+  background: #fff6ea; color: #c4623a; border-radius: 8px;
+  font-size: 28px; font-weight: 900; letter-spacing: 0.12em;
+  transform: rotate(-8deg);
+  box-shadow: 0 8px 0 #e2b79e;
+}
+#cartoncino.entra { animation: timbro 220ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes timbro { from { transform: rotate(-8deg) scale(1.6); } to { transform: rotate(-8deg) scale(1); } }
 
 #punto-aiuto {
   position: absolute; z-index: 8; width: 64px; height: 64px; margin: -32px 0 0 -32px;
@@ -71,25 +102,49 @@ button { font: inherit; color: inherit; }
 }
 #lente-ui canvas { width: 100%; height: 100%; }
 #indizio-volo {
-  position: absolute; z-index: 16; left: 30%; top: 40%; background: #fff6ea;
-  border: 2px solid var(--inchiostro); padding: 6px 10px; border-radius: 10px;
+  position: absolute; z-index: 16; left: 16px; top: calc(var(--safe-top) + 108px); background: #fff6ea;
+  border: 0; padding: 8px 12px; border-radius: 16px;
+  box-shadow: 0 3px 0 #e2b79e;
 }
 #indizio-volo.vola { animation: vola 0.6s ease-in forwards; }
 @keyframes vola { to { transform: translate(-20vw, 35vh) scale(0.6); opacity: 0.2; } }
 
 #cassetta {
-  position: absolute; z-index: 12; left: 70px; right: 8px; bottom: calc(var(--safe-bottom) + 8px);
-  display: flex; justify-content: flex-end; overflow: visible;
+  position: absolute; z-index: 12; left: 12px; right: 12px; bottom: calc(var(--safe-bottom) + 18px);
+  height: 92px; display: flex; align-items: flex-end; gap: 8px;
+  padding: 0 10px 12px 8px; border-radius: 22px; overflow: visible;
+  background: linear-gradient(#c98a55, #b57442);
+  box-shadow: inset 0 3px 0 #dda06a, 0 4px 0 #8a522e;
 }
-.attrezzi { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; max-width: 220px; }
-.slot {
-  width: 64px; height: 64px; flex: 0 0 64px; border-radius: 14px; border: 2px solid transparent;
-  background: #fff6eacc; color: var(--inchiostro);
+#cassetta[hidden] { display: none; }
+#cassetta.via { transform: translateY(120%); transition: transform 0.45s ease; }
+#taccuino-btn {
+  position: relative; z-index: 1; flex: 0 0 52px; width: 52px; height: 64px;
+  border: 0; border-radius: 8px 14px 14px 8px; background: #e9d9be;
+  box-shadow: inset 5px 0 0 #8fbfa8;
 }
-.slot.in-mano { transform: translateY(-10px); border-color: var(--inchiostro); }
-.slot.pulsa { animation: pulsa 1.2s ease-in-out infinite; border-color: var(--miele); }
-.slot.pop { animation: pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
-@keyframes pop { from { transform: scale(0.4); } to { transform: scale(1); } }
+.attrezzi { display: flex; flex-wrap: nowrap; gap: 6px; justify-content: flex-end; flex: 1; min-width: 0; }
+.slot, .incavo {
+  width: auto; height: 64px; flex: 1 1 0; max-width: 64px; min-width: 0;
+  border-radius: 14px; border: 0; color: var(--inchiostro);
+}
+.slot { background: #fff6ea; box-shadow: inset 0 -4px 0 #ead3be; }
+.incavo { background: #a9693c; box-shadow: inset 0 4px 0 #8a522e; }
+.slot.in-mano {
+  transform: translateY(-10px);
+  box-shadow: 0 0 0 3px #f0b86e, 0 8px 0 #9a5f3844;
+  animation: stacca 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.slot.pulsa { animation: pulsa 1.2s ease-in-out infinite; box-shadow: 0 0 0 3px var(--miele); }
+.slot.nuovo { animation: entra 250ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes stacca {
+  from { transform: translateY(-10px) scale(1.15); }
+  to { transform: translateY(-10px) scale(1); }
+}
+@keyframes entra {
+  0% { transform: translateY(28px) scale(1.1, 0.9); }
+  100% { transform: translateY(0) scale(1); }
+}
 
 #taccuino, #impostazioni {
   position: absolute; z-index: 45; inset: auto 8% 12% 8%;
@@ -111,10 +166,13 @@ button { font: inherit; color: inherit; }
 #salta { margin-top: 12px; opacity: 0.8; }
 #timbro { margin: 0; font-size: 12px; opacity: 0.6; }
 #azioni {
-  position: absolute; z-index: 28; left: 12%; right: 12%; bottom: calc(var(--safe-bottom) + 28px);
-  display: flex; gap: 8px;
+  position: absolute; z-index: 46; left: 0; right: 0; bottom: calc(var(--safe-bottom) + 16px);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
 }
-#azioni button { flex: 1; background: var(--pesca); }
+#azioni button {
+  width: min(300px, 88vw); height: 52px; flex: none; background: #fff6ea;
+  border: 0; box-shadow: 0 3px 0 #e2b79e; font-weight: 800;
+}
 #paesaggio {
   position: absolute; inset: 0; z-index: 50; background: #f4d2c0ee;
   display: grid; place-items: center;

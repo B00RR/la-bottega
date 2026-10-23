@@ -807,10 +807,10 @@ export class Gioco {
       this.vista.ettore.mano = 1;
       this.audio.click();
       this.audio.arpeggio();
-      this.scena.emetti('vetro', '#ffd59a', 10);
+      this.scena.emetti('vetro', '#ffe7b0', 18);
       this.scena.pulsaLampadina();
       vibra([20, 40, 30]);
-      this.ui.taccuinoAuto(true);
+      this.ui.timbroLuce();
       this.audio.strato(2);
     }
     if (p.grande === 'tv') {
@@ -833,7 +833,7 @@ export class Gioco {
     } catch (errore) {
       console.error(errore);
     }
-    this.celebrando = p.grande ? 1.15 : p.tipo === 'blocco' ? 0.02 : 0.28;
+    this.celebrando = p.grande === 'torcia' ? 3 : p.grande ? 1.15 : p.tipo === 'blocco' ? 0.02 : 0.28;
   }
 
   avanza() {
@@ -877,9 +877,13 @@ export class Gioco {
       this.corrI += 1;
       this.app.dataset.corr = id;
     } else if (tipo === 'corr.nuda') id = 'corr.nuda';
-    if (this.bolla) this.chiudiBolla();
-    const detto = t(id);
-    this.ui.correzione(detto, this.ultimo?.x ?? this.down?.x, this.ultimo?.y ?? this.down?.y);
+    this.coda = [];
+    if (this.bolla) {
+      this.bolla = null;
+      this.app.dataset.bolla = '';
+    }
+    this.subito = true;
+    this.accoda([id]);
     if (this.errori >= 3 && !this.calma) {
       this.calma = true;
       this.aiuto = Math.max(this.aiuto, 2);
@@ -905,7 +909,9 @@ export class Gioco {
     const id = this.coda.shift();
     const testo = t(id);
     const durata = this.debugCorr ? 0.35 : Math.max(1.8, 1.2 + testo.length * 0.06);
-    this.bolla = { id, testo, durata, eta: durata, caratteri: 0 };
+    const pieno = this.subito || this.debugCorr;
+    this.subito = false;
+    this.bolla = { id, testo, durata, eta: durata, caratteri: pieno ? testo.length : 0 };
     this.consecutive += 1;
     if (this.debugCorr) this.corrViste = [...(this.corrViste || []), testo];
     if (!this.debugCorr) this.audio.parla(testo);

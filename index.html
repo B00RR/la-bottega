@@ -9,35 +9,68 @@
     <style>
       :root { --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom); }
       html, body { margin: 0; height: 100%; background: #c4844e; }
+      @font-face {
+        font-family: Nunito;
+        font-style: normal;
+        font-weight: 800;
+        font-display: swap;
+        src: url("/la-bottega/font/nunito-800.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: Nunito;
+        font-style: normal;
+        font-weight: 900;
+        font-display: swap;
+        src: url("/la-bottega/font/nunito-900.woff2") format("woff2");
+      }
       #saracinesca {
         position: fixed; inset: 0; z-index: 30; background:
-          repeating-linear-gradient(#c4844e, #c4844e 14px, #b3763d 15px, #a86b3a 28px);
+          repeating-linear-gradient(#d29a62 0 6px, #e8b07a 6px 7px, #b57442 7px 14px);
         display: flex; align-items: flex-end; justify-content: center;
         transition: none; touch-action: none;
       }
+      #lama {
+        position: absolute; left: 8%; right: 8%; bottom: -6px; height: 14px;
+        background: #ffd59a; filter: blur(12px); border-radius: 999px;
+        transform: scaleX(0.35); transform-origin: center;
+        transition: transform 0.6s ease;
+      }
+      #saracinesca.pronta #lama { transform: scaleX(1); }
       #cartello {
-        position: absolute; top: 18%; left: 50%; transform: translateX(-50%);
-        background: #f4d2c0; color: #3c291c; font: 600 22px Georgia, serif;
-        padding: 14px 18px; border-radius: 6px;
+        position: absolute; top: 16%; left: 50%; transform: translateX(-50%);
+        width: 300px; max-width: 86vw; height: 64px; margin: 0;
+        background: #3c291c; color: #fff6ea; border-radius: 10px;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        font-family: Nunito, "Trebuchet MS", sans-serif;
+      }
+      #cartello .nome { font-weight: 900; font-size: 28px; line-height: 1; }
+      #cartello .sotto { font-weight: 800; font-size: 13px; letter-spacing: 0.2em; color: #f0b86e; text-transform: lowercase; }
+      #cartello.domani {
+        top: 82%; width: auto; height: auto; padding: 14px 22px;
+        background: #f4d2c0; color: #3c291c; font-weight: 900; font-size: 28px;
       }
       #maniglia {
-        width: 74px; height: 18px; margin-bottom: calc(28px + var(--safe-bottom));
-        background: #f0b86e; border-radius: 9px; box-shadow: 0 2px 0 #3c291c55;
+        width: 72px; height: 22px; margin-bottom: calc(28px + var(--safe-bottom));
+        background: #f0b86e; border-radius: 11px; box-shadow: 0 3px 0 #9a5f38;
       }
-      #gesso { position: absolute; bottom: 18%; font: 700 42px Georgia, serif; color: #fff6ea; }
+      #gesso { position: absolute; bottom: 18%; font: 800 42px Nunito, sans-serif; color: #fff6ea; }
     </style>
   </head>
   <body>
     <div id="app" data-pronto="0" data-input="1">
       <canvas id="vista"></canvas>
       <div id="saracinesca">
-        <p id="cartello">La Bottega · Riparazioni</p>
+        <div id="lama"></div>
+        <p id="cartello"><span class="nome">La Bottega</span><span class="sotto">riparazioni</span></p>
         <p id="gesso" hidden>↑</p>
         <div id="maniglia"></div>
       </div>
+      <div id="chi-parla">
+        <div id="medaglione" aria-hidden="true"></div>
+        <p id="etichetta">Ettore</p>
+      </div>
       <div id="bolla" hidden><p class="riga" aria-live="polite"></p></div>
-      <p id="correzione" hidden></p>
-      <div id="medaglione" aria-hidden="true"></div>
+      <div id="cartoncino" hidden>RIPARATO</div>
       <div id="punto-aiuto" hidden></div>
       <div id="mano-aiuto" hidden>
         <svg viewBox="0 0 64 64" width="52" height="52" aria-hidden="true">
@@ -46,16 +79,18 @@
       </div>
       <div id="lente-ui" hidden><canvas width="256" height="256"></canvas></div>
       <div id="indizio-volo" hidden></div>
-      <button id="taccuino-btn" type="button" aria-label="Taccuino" hidden>
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 4 h10 a2 2 0 0 1 2 2 v14 H8 a2 2 0 0 0-2 2 z" fill="#fff6ea" stroke="#3c291c"/><path d="M8 8 h7 M8 12 h7" stroke="#3c291c"/></svg>
-      </button>
       <button id="ingranaggio" type="button" aria-label="Impostazioni">
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
           <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
           <path fill="none" stroke="currentColor" stroke-width="1.6" d="M12 3 v3 M12 18 v3 M3 12 h3 M18 12 h3 M5.6 5.6 l2 2 M16.4 16.4 l2 2 M18.4 5.6 l-2 2 M7.6 16.4 l-2 2"/>
         </svg>
       </button>
-      <section id="cassetta" hidden><div class="attrezzi"></div></section>
+      <section id="cassetta" hidden>
+        <button id="taccuino-btn" type="button" aria-label="Taccuino" hidden>
+          <svg viewBox="0 0 24 32" width="22" height="30" aria-hidden="true"><path d="M5 2 h12 a2 2 0 0 1 2 2 v24 H7 a2 2 0 0 0-2 2 z" fill="#e9d9be" stroke="#3c291c" stroke-width="1.4"/><path d="M5 2 v26" stroke="#8fbfa8" stroke-width="3"/><path d="M9 9 h7 M9 14 h7 M9 19 h5" stroke="#3c291c" stroke-width="1.4"/></svg>
+        </button>
+        <div class="attrezzi"></div>
+      </section>
       <section id="taccuino" hidden>
         <div class="pagine">
           <ul id="lista-indizi"></ul>

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { clona } from './mondo.js';
 import { caricaSet, clonaMateriale, creaBottega, creaEttore, creaTelecomando, indicizza, pittura } from './modelli.js';
 import { montaTorcia, posaTappo } from './torcia.js';
@@ -13,15 +14,20 @@ const APERTURA_GUSCIO = 160 * Math.PI / 180;
 const APERTURA_CASSETTO = 0.075;
 
 const INQUADRATURE = {
-  PORTA: { nodo: 'Soglia', dist: 0.85, alza: 0.22 },
-  BANCO: { nodo: 'bottone', dist: 3.19, alza: 1.01 },
-  'DETTAGLIO-CODA': { nodo: 'macchia', dist: 0.42, alza: 0.06 },
-  'DETTAGLIO-VITE': { nodo: 'vite', dist: 0.34, alza: 0.04 },
-  'DETTAGLIO-TAPPO-APERTO': { nodo: 'contatto', dist: 0.48, alza: 0.08 },
-  TELECOMANDO: { nodo: 'tasto_on', dist: 0.48, alza: 0.78 },
-  'TC-RETRO': { nodo: 'fessura_a', anche: 'fessura_b', peso: 0.5, dist: 0.42, alza: 0.78, lato: -0.62 },
-  'TC-INTERNO': { nodo: 'filo', anche: 'sede_molla', peso: 0.48, dist: 0.46, alza: 0.82 },
+  PORTA: { nodo: 'Soglia', dist: 1.55, alza: 0.62 },
+  BANCO: { nodo: 'bottone', fisso: 'banco' },
+  'DETTAGLIO-CODA': { nodo: 'macchia', ox: 0.78, oy: 0.36, oz: 0.52, guardaY: -0.04 },
+  'DETTAGLIO-VITE': { nodo: 'vite', ox: 0.72, oy: 0.38, oz: 0.55, guardaY: -0.02 },
+  'DETTAGLIO-TAPPO-APERTO': { nodo: 'contatto', ox: 0.59, oy: 0.64, oz: 0.49 },
+  TELECOMANDO: { nodo: 'tasto_on', ox: 0.6, oy: 0.38, oz: 0.71 },
+  'TC-RETRO': { nodo: 'fessura_a', anche: 'fessura_b', peso: 0.5, ox: 0.76, oy: 0.38, oz: 0.53 },
+  'TC-INTERNO': { nodo: 'filo', anche: 'sede_molla', peso: 0.48, ox: 0.54, oy: 0.64, oz: 0.54 },
 };
+
+function distanzaMinima(dest, guarda, minima = 0.9) {
+  if (dest.distanceTo(guarda) >= 0.7) return;
+  dest.sub(guarda).setLength(minima).add(guarda);
+}
 
 function easeInOutSine(t) {
   return -(Math.cos(Math.PI * t) - 1) / 2;
@@ -37,15 +43,17 @@ export class Scena {
     this.canvas = canvas;
     this.renderer = new THREE.WebGLRenderer({
       canvas,
-      antialias: false,
+      antialias: true,
       alpha: false,
       powerPreference: 'high-performance',
       stencil: false,
     });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.NoToneMapping;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
     this.renderer.setClearColor('#f4d2c0', 1);
-    this.renderer.shadowMap.enabled = false;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.dprMassimo = Math.min(window.devicePixelRatio || 1, 1.5);
     this.dpr = this.dprMassimo;
     this.tempi = [];
@@ -58,11 +66,30 @@ export class Scena {
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color('#f4d2c0');
+    this.scene.fog = new THREE.Fog('#f4d2c0', 2.6, 5.5);
     this.camera = new THREE.PerspectiveCamera(35, 1, 0.02, 20);
-    this.hemi = new THREE.HemisphereLight('#fff6ea', '#c4844e', 1.15);
-    this.sole = new THREE.DirectionalLight('#ffd59a', 1.85);
-    this.sole.position.set(0.7, 1.5, 0.9);
-    this.scene.add(this.hemi, this.sole);
+    this.hemi = new THREE.HemisphereLight('#fff6ea', '#c4844e', 0.62);
+    this.sole = new THREE.DirectionalLight('#ffd59a', 2.45);
+    this.sole.position.set(1.1, 2.6, 1.8);
+    this.sole.castShadow = true;
+    this.sole.shadow.mapSize.set(1024, 1024);
+    this.sole.shadow.radius = 4;
+    this.sole.shadow.bias = -0.0004;
+    this.sole.shadow.normalBias = 0.04;
+    const campo = this.sole.shadow.camera;
+    campo.near = 0.4;
+    campo.far = 7;
+    campo.left = -1.5;
+    campo.right = 1.5;
+    campo.top = 1.5;
+    campo.bottom = -1.5;
+    this.taglio = new THREE.DirectionalLight('#fff6ea', 0.8);
+    this.taglio.position.set(-1.5, 1.6, -1.2);
+    this.scene.add(this.hemi, this.sole, this.sole.target, this.taglio);
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environmentIntensity = 0.35;
+    pmrem.dispose();
 
     this.nodi = new Map();
     const bottega = creaBottega();
@@ -140,11 +167,58 @@ export class Scena {
         this.scene.add(this.telecomando);
       }
       this.reindicizza();
+      this.preparaOmbre();
       return info;
     } catch {
       this.reindicizza();
+      this.preparaOmbre();
       return { glb: false, nodi: [] };
     }
+  }
+
+  preparaOmbre() {
+    const banco = this.scene.getObjectByName('banco');
+    const stanza = this.scene.getObjectByName('BottegaStatica');
+    if (stanza) stanza.traverse((nodo) => { if (nodo.isMesh) nodo.receiveShadow = true; });
+    this.casterBanco = this.scegliCaster(banco, true);
+    const blob = this.scene.getObjectByName('Ombra');
+    if (blob) blob.visible = !this.casterBanco;
+    this.casterOggetto = null;
+    this.oggettoOmbra = null;
+  }
+
+  scegliCaster(radice, riceve) {
+    if (!radice) return null;
+    let scelto = null;
+    let max = 0;
+    radice.traverse((nodo) => {
+      if (!nodo.isMesh || this.eAttrezzo(nodo)) return;
+      nodo.castShadow = false;
+      if (riceve) nodo.receiveShadow = true;
+      const geo = nodo.geometry;
+      const tris = geo?.index ? geo.index.count / 3 : (geo?.attributes?.position?.count || 0) / 3;
+      if (tris > max) { max = tris; scelto = nodo; }
+    });
+    if (scelto) scelto.castShadow = true;
+    return scelto;
+  }
+
+  eAttrezzo(nodo) {
+    let corrente = nodo;
+    while (corrente) {
+      if (corrente.name?.startsWith('attrezzo_')) return true;
+      corrente = corrente.parent;
+    }
+    return false;
+  }
+
+  aggiornaOmbraOggetto(vista) {
+    const prossimo = vista?.telecomando?.visibile ? this.telecomando : this.torcia;
+    if (prossimo === this.oggettoOmbra) return;
+    if (this.casterOggetto) this.casterOggetto.castShadow = false;
+    this.casterOggetto = this.scegliCaster(prossimo, false);
+    this.oggettoOmbra = prossimo;
+    this.sporco = true;
   }
 
   reindicizza() {
@@ -159,12 +233,29 @@ export class Scena {
   }
 
   creaFascio() {
-    const mesh = new THREE.Mesh(
-      new THREE.ConeGeometry(0.05, 0.42, 6, 1, true),
-      pittura('#ffd59a', { unico: true, additivo: true, opacita: 0.28 }),
-    );
+    const altezza = 0.72;
+    const geometria = new THREE.ConeGeometry(0.07, altezza, 14, 1, true);
+    const posizione = geometria.attributes.position;
+    const colori = new Float32Array(posizione.count * 3);
+    for (let i = 0; i < posizione.count; i += 1) {
+      const t = THREE.MathUtils.clamp(posizione.getY(i) / altezza + 0.5, 0, 1);
+      const k = 1 - t;
+      colori[i * 3] = 1 * k;
+      colori[i * 3 + 1] = 0.906 * k;
+      colori[i * 3 + 2] = 0.69 * k;
+    }
+    geometria.setAttribute('color', new THREE.BufferAttribute(colori, 3));
+    const mesh = new THREE.Mesh(geometria, new THREE.MeshBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.35,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false,
+    }));
     mesh.visible = false;
     mesh.name = 'Fascio';
+    mesh.frustumCulled = false;
     return mesh;
   }
 
@@ -358,8 +449,10 @@ export class Scena {
     e.position.y = posaEttore === 'alzato' ? 0.08 : 0;
     const giornale = this.nodo('giornale');
     if (giornale) {
-      giornale.rotation.x = posaEttore === 'giornale' ? -0.9 : 0.6;
-      giornale.position.z = posaEttore === 'giornale' ? 0.1 : 0.12;
+      const su = posaEttore === 'giornale';
+      giornale.rotation.x = su ? -0.35 : 1.25;
+      giornale.position.y = su ? 0.4 : 0.16;
+      giornale.position.z = su ? 0.1 : 0.07;
     }
     const cappello = this.nodo('cappello');
     if (cappello) cappello.visible = (vista.ettore.cappello || 0) > 0.5;
@@ -376,9 +469,11 @@ export class Scena {
     if (t.accesa && this.vetro) {
       const origine = this.vetro.getWorldPosition(this._v);
       const faccia = this.nodo('testa_ettore')?.getWorldPosition(this._v2) || this.ettore.position;
-      this.fascio.position.copy(origine).lerp(faccia, 0.35);
+      const dist = Math.max(0.35, origine.distanceTo(faccia));
+      this.fascio.position.copy(origine).lerp(faccia, 0.5);
       this.fascio.lookAt(faccia);
       this.fascio.rotateX(Math.PI / 2);
+      this.fascio.scale.set(1, dist / 0.72, 1);
     }
   }
 
@@ -595,12 +690,21 @@ export class Scena {
         this._v.lerp(this._v2, shot.peso ?? 0.5);
       }
     }
-    const dest = new THREE.Vector3(this._v.x + (shot.lato || 0), this._v.y + shot.alza, this._v.z + shot.dist);
     const guarda = this._v.clone();
-    if (vuoleCassetto) {
-      guarda.set(0.04, 0.1, 0.08);
-      dest.set(0.04, 1.45, 3.33);
+    guarda.y += shot.guardaY || 0;
+    const dest = shot.ox != null
+      ? new THREE.Vector3(guarda.x + shot.ox, guarda.y + shot.oy, guarda.z + shot.oz)
+      : new THREE.Vector3(this._v.x + (shot.lato || 0), this._v.y + (shot.alza || 0), this._v.z + (shot.dist || 1));
+    if (shot.fisso === 'banco' && !vuoleCassetto) {
+      const base = this.torcia.position;
+      guarda.set(base.x - 0.18, base.y - 0.13, base.z - 0.18);
+      dest.set(base.x - 0.18, base.y + 1.09, base.z + 2.0);
     }
+    if (vuoleCassetto) {
+      guarda.set(0.2, 0.06, 0.02);
+      dest.set(0.02, 0.92, 1.45);
+    }
+    distanzaMinima(dest, guarda);
     if (!this.visuale) this.visuale = clona(vistaFinale);
     if (prima) {
       this.scrivi(prima, 1);
@@ -610,6 +714,7 @@ export class Scena {
     this.guardaDa.copy(this.guardaA);
     this.cameraA.copy(dest);
     this.guardaA.copy(guarda);
+    this.sole.target.position.copy(guarda);
     this.cameraT = 0;
     this.cameraDurata = durata;
     this.meta = vistaFinale;
@@ -692,14 +797,15 @@ export class Scena {
     v.shutter = m.shutter;
     v.cartello = m.cartello;
     v.flash = m.flash;
-    if (m.flash > 0) {
-      this.flashT = Math.min(1.5, this.flashT + dt);
-      const andata = this.flashT < 0.45 ? this.flashT / 0.45 : Math.max(0, 1 - (this.flashT - 0.45) / 1.05);
-      this.hemi.color.set('#fff6ea').lerp(new THREE.Color('#ffd59a'), andata * 0.65);
+    if (m.flash > 0 && this.flashT < 1.9) {
+      this.flashT = Math.min(1.9, this.flashT + dt);
+      const salita = this.flashT < 0.4 ? this.flashT / 0.4 : Math.max(0, 1 - (this.flashT - 0.4) / 1.5);
+      this.renderer.toneMappingExposure = 1.05 + 0.2 * salita;
       this.sporco = true;
     }
     this.scrivi(v, dt);
     this.sistemaPile(v);
+    this.aggiornaOmbraOggetto(v);
     if (this.squashT > 0) {
       this.squashT -= dt;
       const k = Math.max(0, this.squashT / 0.12);
@@ -722,6 +828,7 @@ export class Scena {
       this.camera.position.lerpVectors(this.cameraDa, this.cameraA, e);
       const guarda = this._v.copy(this.guardaDa).lerp(this.guardaA, e);
       this.camera.lookAt(guarda);
+      this.sole.target.position.copy(guarda);
       this.sporco = true;
     }
     this.aggiornaParticelle(dt);
@@ -741,8 +848,14 @@ export class Scena {
     const ctx = this.schermo.userData.tela.getContext('2d');
     this.schermo.userData.accesa = accesa;
     if (!accesa) {
-      ctx.fillStyle = '#24180f';
+      ctx.fillStyle = '#5a4a40';
       ctx.fillRect(0, 0, 64, 40);
+      ctx.strokeStyle = '#a99e94';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(6, 34);
+      ctx.lineTo(58, 6);
+      ctx.stroke();
     } else {
       ctx.fillStyle = '#2f6b45';
       ctx.fillRect(0, 0, 64, 40);

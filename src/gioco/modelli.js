@@ -11,13 +11,17 @@ export const SCALA = 1.35;
 const cache = new Map();
 
 export function pittura(colore, extra = {}) {
-  const chiave = JSON.stringify([colore, extra.emissive || '', extra.opacita ?? 1, extra.additivo ? 1 : 0, extra.lato || 0]);
+  const chiave = JSON.stringify([
+    colore, extra.emissive || '', extra.opacita ?? 1, extra.additivo ? 1 : 0,
+    extra.lato || 0, extra.intensita ?? '', extra.roughness ?? '', extra.metalness ?? '',
+  ]);
   if (!extra.unico && cache.has(chiave)) return cache.get(chiave);
-  const materiale = new THREE.MeshLambertMaterial({
+  const materiale = new THREE.MeshStandardMaterial({
     color: colore,
-    flatShading: true,
+    roughness: extra.roughness ?? 0.78,
+    metalness: extra.metalness ?? 0,
     emissive: new THREE.Color(extra.emissive || '#000000'),
-    emissiveIntensity: extra.emissive ? 0.6 : 0,
+    emissiveIntensity: extra.intensita ?? (extra.emissive ? 0.45 : 0),
   });
   if (extra.opacita != null && extra.opacita < 1) {
     materiale.transparent = true;
@@ -120,18 +124,19 @@ export function creaTelecomando() {
 
 export function creaEttore() {
   const g = nominato('Ettore', new THREE.Group());
-  g.position.set(0, 0, -0.34);
-  const corpo = nominato('corpo_ettore', mesh('scatola', [0.18, 0.2, 0.1], '#e8977c'));
+  g.position.set(0.22, 0, -0.34);
+  g.rotation.y = -0.22;
+  const corpo = nominato('corpo_ettore', mesh('scatola', [0.18, 0.2, 0.1], '#8fbfa8'));
   corpo.position.y = 0.22;
-  const grembiule = mesh('scatola', [0.14, 0.12, 0.02], '#8fbfa8');
+  const grembiule = mesh('scatola', [0.14, 0.12, 0.02], '#9a5f38');
   grembiule.position.set(0, 0.18, 0.06);
-  const testa = nominato('testa_ettore', mesh('sfera', [0.07, 8, 6], '#f4d2c0'));
+  const testa = nominato('testa_ettore', mesh('sfera', [0.07, 8, 6], '#edb89a'));
   testa.position.y = 0.42;
   testa.scale.set(1, 1.05, 0.92);
-  const capelli = mesh('sfera', [0.072, 8, 6], '#d5d5d5');
+  const capelli = mesh('sfera', [0.072, 8, 6], '#6b4e3d');
   capelli.scale.set(1.02, 0.48, 1);
   capelli.position.y = 0.47;
-  const baffo = mesh('scatola', [0.06, 0.012, 0.02], '#b9b9b9');
+  const baffo = mesh('scatola', [0.06, 0.012, 0.02], '#fff6ea');
   baffo.position.set(0, 0.39, 0.06);
   const occhio = (nome, x) => {
     const m = nominato(nome === 'OcchioSx' ? 'occhio_sx' : 'occhio_dx', mesh('sfera', [0.009, 6, 4], '#3c291c'));
@@ -142,7 +147,7 @@ export function creaEttore() {
   giornale.position.set(0, 0.4, 0.1);
   const mano = nominato('mano', mesh('sfera', [0.02, 6, 5], '#f4d2c0'));
   mano.position.set(0.1, 0.3, 0.08);
-  const cappello = nominato('cappello', mesh('cilindro', [0.05, 0.07, 0.05, 6], '#3c291c'));
+  const cappello = nominato('cappello', mesh('cilindro', [0.05, 0.07, 0.05, 8], '#6b4e3d'));
   cappello.position.y = 0.54;
   cappello.visible = false;
   g.add(corpo, grembiule, testa, capelli, baffo, occhio('OcchioSx', -0.025), occhio('OcchioDx', 0.025), giornale, mano, cappello);
@@ -156,9 +161,23 @@ export function creaBottega() {
     return pezzo;
   };
   aggiungi(mesh('scatola', [1.8, 1.15, 0.06], '#f4d2c0')).position.set(0, 0.62, -0.55);
+  const zoccolo = aggiungi(mesh('scatola', [1.82, 0.22, 0.05], '#e8b79c'));
+  zoccolo.position.set(0, 0.11, -0.5);
   aggiungi(mesh('scatola', [2.4, 0.04, 2.2], '#e7cbb8')).position.set(0, -0.9, 0.4);
-  const finestra = aggiungi(mesh('scatola', [0.36, 0.42, 0.02], '#fff6ea', { emissive: '#ffd59a' }));
-  finestra.position.set(-0.55, 0.78, -0.51);
+  const finestra = aggiungi(mesh('scatola', [0.5, 0.38, 0.02], '#fff6ea', { emissive: '#ffd59a', intensita: 0.55 }));
+  finestra.position.set(-0.42, 0.98, -0.5);
+  const palazzoA = aggiungi(mesh('scatola', [0.16, 0.26, 0.03], '#e8977c'));
+  palazzoA.position.set(-0.52, 0.92, -0.47);
+  const palazzoB = aggiungi(mesh('scatola', [0.13, 0.18, 0.03], '#8fbfa8'));
+  palazzoB.position.set(-0.32, 0.88, -0.47);
+  const mensola = aggiungi(mesh('scatola', [0.62, 0.025, 0.1], '#c4a484'));
+  mensola.position.set(0.46, 1.02, -0.48);
+  const radio = aggiungi(mesh('scatola', [0.08, 0.07, 0.05], '#d9c3a5'));
+  radio.position.set(0.28, 1.07, -0.48);
+  const barattolo = aggiungi(mesh('cilindro', [0.028, 0.028, 0.07, 8], '#c9bfb4'));
+  barattolo.position.set(0.46, 1.08, -0.48);
+  const vasoAttesa = aggiungi(mesh('sfera', [0.032, 8, 6], '#e7d27a'));
+  vasoAttesa.position.set(0.62, 1.08, -0.48);
   const stipiteS = aggiungi(mesh('scatola', [0.06, 0.7, 0.06], '#a86b3a'));
   stipiteS.position.set(-0.28, 0.4, 0.72);
   const stipiteD = stipiteS.clone();
@@ -183,7 +202,7 @@ export function creaBottega() {
 
   const tv = nominato('Tv', new THREE.Group());
   tv.position.set(0.34, 0.72, -0.42);
-  const scocca = mesh('scatola', [0.22, 0.16, 0.04], '#c4844e');
+  const scocca = mesh('scatola', [0.22, 0.16, 0.04], '#5a4a40');
   const tela = document.createElement('canvas');
   tela.width = 64;
   tela.height = 40;
@@ -202,12 +221,13 @@ export function creaBottega() {
   tv.add(scocca, schermo, antenna);
 
   const ombra = new THREE.Mesh(
-    new THREE.CircleGeometry(0.12, 10),
-    pittura('#000000', { opacita: 0.12 }),
+    new THREE.CircleGeometry(0.16, 16),
+    pittura('#9a5f38', { opacita: 0.22, unico: true }),
   );
   ombra.rotation.x = -Math.PI / 2;
-  ombra.position.set(0, 0.012, 0.04);
+  ombra.position.set(0, 0.004, 0.04);
   ombra.name = 'Ombra';
+  ombra.visible = false;
 
   return {
     statica: unisci(statici),
