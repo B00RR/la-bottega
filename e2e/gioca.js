@@ -333,7 +333,7 @@ export async function giocaTutorial(page, { mouse, prove, prefisso }) {
         const punti = [{ x: cx - 20, y: cy }];
         for (let i = 0; i < 6; i += 1) punti.push({ x: cx + (i % 2 ? 24 : -24), y: cy });
         await puntatore(page, punti, mouse);
-        await page.waitForFunction(() => /ragazzo|cacciavite/i.test(document.querySelector('#correzione')?.textContent || ''));
+        await page.waitForFunction(() => /ragazzo|cacciavite/i.test(document.querySelector('#correzione')?.textContent || ''), null, { timeout: 4000 });
         const dopoSbaglio = await leggi(page);
         expect(dopoSbaglio.id).toBe('torcia-strofina');
         expect(dopoSbaglio.stato.pulizia).toBe(0);

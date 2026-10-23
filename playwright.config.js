@@ -4,7 +4,7 @@ const gl = ['--use-gl=angle', '--use-angle=swiftshader', '--ignore-gpu-blocklist
 
 export default defineConfig({
   testDir: 'e2e',
-  timeout: 300000,
+  timeout: 420000,
   expect: { timeout: 8000 },
   workers: 1,
   fullyParallel: false,

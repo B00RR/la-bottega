@@ -27,7 +27,7 @@ export class Interfaccia {
     this.testoIstruzione = radice.querySelector('#istruzione .testo');
     this.cassetta = radice.querySelector('#cassetta');
     this.attrezzi = radice.querySelector('#cassetta .attrezzi');
-    this.correzione = radice.querySelector('#correzione');
+    this.nodoCorrezione = radice.querySelector('#correzione');
     this.mano = radice.querySelector('#mano-aiuto');
     this.punto = radice.querySelector('#punto-aiuto');
     this.cursore = radice.querySelector('#cursore-strumento');
@@ -129,11 +129,11 @@ export class Interfaccia {
   }
 
   correzione(frase) {
-    this.correzione.textContent = frase;
-    this.correzione.hidden = false;
+    this.nodoCorrezione.textContent = frase;
+    this.nodoCorrezione.hidden = false;
     window.clearTimeout(this.timerCorrezione);
     this.timerCorrezione = window.setTimeout(() => {
-      this.correzione.hidden = true;
+      this.nodoCorrezione.hidden = true;
     }, 2400);
   }
 
