@@ -45,7 +45,9 @@ const timer = new THREE.Timer();
 timer.connect(document);
 scena.renderer.setAnimationLoop((tempo) => {
   timer.update(tempo);
-  const dt = Math.min(timer.getDelta(), 0.1);
+  const crudo = timer.getDelta();
+  gioco.dtLente = Math.min(crudo, 0.45);
+  const dt = Math.min(crudo, 0.1);
   let dirty = false;
   try {
     dirty = gioco.aggiorna(dt);

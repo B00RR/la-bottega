@@ -754,7 +754,7 @@ export class Gioco {
       const zone = nome === 'macchia' ? ['macchia', 'tappo'] : [nome];
       const raggio = nome === 'macchia' ? 100 : gesti.lente.raggio;
       const sopra = zone.some((zona) => this.vicino(zona, lx, ly, raggio));
-      if (sopra) this.lenteT[nome] = (this.lenteT[nome] || 0) + dt;
+      if (sopra) this.lenteT[nome] = (this.lenteT[nome] || 0) + (this.dtLente || dt);
       else this.lenteT[nome] = 0;
       if ((this.lenteT[nome] || 0) >= gesti.lente.conferma) {
         this.parziali.push(nome);
@@ -884,6 +884,7 @@ export class Gioco {
     }
     this.subito = true;
     this.accoda([id]);
+    this.ui.segui(this);
     if (this.errori >= 3 && !this.calma) {
       this.calma = true;
       this.aiuto = Math.max(this.aiuto, 2);
