@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { clona } from './mondo.js';
-import { caricaSet, clonaMateriale, creaBottega, creaEttore, creaTelecomando, indicizza, pittura } from './modelli.js';
+import { caricaEttore, caricaSet, clonaMateriale, creaBottega, creaEttore, creaTelecomando, indicizza, pittura, sistemaEttore } from './modelli.js';
+import { creaPedana, RegiaEttore } from './ettore.js';
 import { montaTorcia, posaTappo } from './torcia.js';
 
 const POSE_TORCIA = {
@@ -166,6 +167,17 @@ export class Scena {
         this.telecomando = set.telecomando;
         this.scene.add(this.telecomando);
       }
+      const personaggio = await caricaEttore();
+      if (personaggio) {
+        this.scene.remove(this.ettore);
+        this.ettore = personaggio.ettore;
+        this.scene.add(this.ettore);
+        sistemaEttore(this.ettore, this.scene.getObjectByName('banco'));
+        this.scene.updateMatrixWorld(true);
+        this.regia = new RegiaEttore(this.ettore, personaggio.clips);
+        this.pedana = creaPedana(this.ettore);
+        this.scene.add(this.pedana);
+      }
       this.reindicizza();
       this.preparaOmbre();
       return info;
@@ -328,6 +340,44 @@ export class Scena {
     return this.nodi.get(nome) || null;
   }
 
+  ettoreAbbassa() {
+    if (this.regia?.allineata) this.regia.abbassa();
+    else this._vuoleAbbassa = true;
+  }
+
+  ettoreSpinge() {
+    if (this.regia?.allineata) this.regia.spingi();
+    else this._vuoleDito = true;
+  }
+
+  ingombroEttore() {
+    if (!this.ettore?.getObjectByName) return null;
+    const nomi = ['occhi', 'coppola', 'giornale', 'mano_sx', 'mano_dx', 'avambraccio_sx', 'avambraccio_dx', 'punta_dito', 'testa'];
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    let n = 0;
+    for (const nome of nomi) {
+      const osso = this.ettore.getObjectByName(nome);
+      if (!osso) continue;
+      const p = this.proietta(osso);
+      if (!p) continue;
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+      n += 1;
+    }
+    if (n < 4) return null;
+    return {
+      minX: Math.round(minX),
+      minY: Math.round(minY),
+      maxX: Math.round(maxX),
+      maxY: Math.round(maxY),
+    };
+  }
+
   /** Mette un oggetto davanti alla camera, dentro il ritratto. */
   ancora(gruppo, xNorm, yNorm, distanza = 0.55) {
     this._ancora = this._ancora || new THREE.Vector3();
@@ -444,31 +494,34 @@ export class Scena {
       this.tv.lookAt(this.camera.position);
     }
 
-    const e = this.ettore;
-    const posaEttore = vista.ettore.posa;
-    e.position.y = posaEttore === 'alzato' ? 0.08 : 0;
-    const giornale = this.nodo('giornale');
-    if (giornale) {
-      const su = posaEttore === 'giornale';
-      giornale.rotation.x = su ? -0.35 : 1.25;
-      giornale.position.y = su ? 0.4 : 0.16;
-      giornale.position.z = su ? 0.1 : 0.07;
+    if (!this.regia) {
+      const e = this.ettore;
+      const posaEttore = vista.ettore.posa;
+      e.position.y = posaEttore === 'alzato' ? 0.08 : 0;
+      const giornale = this.nodo('giornale');
+      if (giornale) {
+        const su = posaEttore === 'giornale';
+        giornale.rotation.x = su ? -0.35 : 1.25;
+        giornale.position.y = su ? 0.4 : 0.16;
+        giornale.position.z = su ? 0.1 : 0.07;
+      }
+      const cappello = this.nodo('cappello');
+      if (cappello) cappello.visible = (vista.ettore.cappello || 0) > 0.5;
+      const mano = this.nodo('mano');
+      if (mano) mano.position.y = 0.3 + (vista.ettore.mano || 0) * 0.12;
+      const strizza = vista.ettore.strizza || 0;
+      const sx = this.nodo('occhio_sx');
+      const dx = this.nodo('occhio_dx');
+      if (sx) sx.scale.y = 1 - strizza * 0.75;
+      if (dx) dx.scale.y = 1 - strizza * 0.75;
     }
-    const cappello = this.nodo('cappello');
-    if (cappello) cappello.visible = (vista.ettore.cappello || 0) > 0.5;
-    const mano = this.nodo('mano');
-    if (mano) mano.position.y = 0.3 + (vista.ettore.mano || 0) * 0.12;
-    const strizza = vista.ettore.strizza || 0;
-    const sx = this.nodo('occhio_sx');
-    const dx = this.nodo('occhio_dx');
-    if (sx) sx.scale.y = 1 - strizza * 0.75;
-    if (dx) dx.scale.y = 1 - strizza * 0.75;
 
     this.tv.visible = (vista.tv || 0) > 0;
     this.fascio.visible = Boolean(t.accesa && this.vetro);
     if (t.accesa && this.vetro) {
       const origine = this.vetro.getWorldPosition(this._v);
-      const faccia = this.nodo('testa_ettore')?.getWorldPosition(this._v2) || this.ettore.position;
+      const facciaNodo = this.ettore?.getObjectByName?.('occhi') || this.nodo('testa_ettore');
+      const faccia = facciaNodo?.getWorldPosition(this._v2) || this.ettore.position;
       const dist = Math.max(0.35, origine.distanceTo(faccia));
       this.fascio.position.copy(origine).lerp(faccia, 0.5);
       this.fascio.lookAt(faccia);
@@ -697,8 +750,10 @@ export class Scena {
       : new THREE.Vector3(this._v.x + (shot.lato || 0), this._v.y + (shot.alza || 0), this._v.z + (shot.dist || 1));
     if (shot.fisso === 'banco' && !vuoleCassetto) {
       const base = this.torcia.position;
-      guarda.set(base.x - 0.18, base.y - 0.13, base.z - 0.18);
-      dest.set(base.x - 0.18, base.y + 1.09, base.z + 2.0);
+      // +0.32 m a destra: Ettore (giornale alzato compreso) resta nel ritratto
+      // e il bottone resta nella zona calda.
+      guarda.set(base.x + 0.14, base.y - 0.13, base.z - 0.18);
+      dest.set(base.x + 0.14, base.y + 1.09, base.z + 2.0);
     }
     if (vuoleCassetto) {
       guarda.set(0.04, 0.1, 0.08);
@@ -794,6 +849,18 @@ export class Scena {
     v.ettore.cappello = m.ettore.cappello;
     v.ettore.mano = smussa(v.ettore.mano, m.ettore.mano, dt, 8);
     v.ettore.strizza = smussa(v.ettore.strizza, m.ettore.strizza, dt, 8);
+    if (this.regia) {
+      const mosso = this.regia.aggiorna(dt, v);
+      if (this.regia.allineata && this._vuoleAbbassa) {
+        this.regia.abbassa();
+        this._vuoleAbbassa = false;
+      }
+      if (this.regia.allineata && this._vuoleDito) {
+        this.regia.spingi();
+        this._vuoleDito = false;
+      }
+      if (mosso || this.regia.animato()) this.sporco = true;
+    }
     v.shutter = m.shutter;
     v.cartello = m.cartello;
     v.flash = m.flash;

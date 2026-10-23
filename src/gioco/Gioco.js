@@ -277,6 +277,7 @@ export class Gioco {
     this.erroreSensoGesto = 0;
     this.passoCompletato = false;
     this.bloccoT = 0;
+    this.ettoreAbbassato = false;
     this.eventiFatti = new Set();
     if (this.passo.tipo === 'saracinesca') {
       this.fermo = true;
@@ -340,13 +341,21 @@ export class Gioco {
     }
     this.ui.saracinesca(this.apertura, this.torciaPronta);
 
+    const vivo = this.dtLente || dt;
     if (this.torciaPronta && this.passo.tipo === 'blocco') {
+      if (!this.ettoreAbbassato && this.bloccoT >= 0.35 && (this.passo.eventi || []).some((ev) => ev.spinta)) {
+        this.ettoreAbbassato = true;
+        this.scena.ettoreAbbassa();
+      }
       this.bloccoT += dt;
       for (const ev of this.passo.eventi || []) {
         if (this.bloccoT >= ev.a && !this.eventiFatti.has(ev.a)) {
           this.eventiFatti.add(ev.a);
           if (ev.riga) this.accoda([ev.riga]);
-          if (ev.spinta) this.vista.torcia.posa = 'spinta';
+          if (ev.spinta) {
+            this.vista.torcia.posa = 'spinta';
+            this.scena.ettoreSpinge();
+          }
         }
       }
       if (this.bloccoT >= this.passo.durata) this.successo();
@@ -381,7 +390,7 @@ export class Gioco {
         this.ui.apriPina();
       }
       if (this.intro && !this.bolla && this.coda.length === 0 && !this.fine2) {
-        this.finePausa += dt;
+        this.finePausa += vivo;
         if (this.finePausa > 0.8 && this.passo.dopoPausa) {
           this.fine2 = true;
           this.accoda([this.passo.dopoPausa]);
@@ -391,7 +400,7 @@ export class Gioco {
 
     const tieneLuce = this.passoCompletato && this.passo.grande === 'torcia' && (this.bolla || this.coda.length > 0);
     if (this.celebrando > 0) {
-      this.celebrando -= dt;
+      this.celebrando -= vivo;
       if (this.celebrando <= 0 && !tieneLuce) this.avanza();
     } else if (this.passoCompletato && this.passo.grande === 'torcia' && !tieneLuce) {
       this.avanza();
@@ -408,7 +417,7 @@ export class Gioco {
     }
     this.mollaTilt(dt);
     this.aiuti();
-    this.bolle(dt);
+    this.bolle(vivo);
     const dirty = this.scena.aggiorna(dt, this.vista, this.immediato);
     this.immediato = new Set();
     if (this.strumento === 'lente' && this.premuto && this.ultimo) {
@@ -1046,6 +1055,9 @@ export class Gioco {
       if (pos) punti[nome] = { x: Math.round(pos.x), y: Math.round(pos.y) };
     }
     app.dataset.punti = JSON.stringify(punti);
+    const ingombro = this.scena.ingombroEttore();
+    if (ingombro) app.dataset.ettore = JSON.stringify(ingombro);
+    else delete app.dataset.ettore;
     if (this.torciaPronta) app.dataset.pronto = '1';
   }
 }

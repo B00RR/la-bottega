@@ -180,10 +180,23 @@ async function finche(page, id, mouse, gesto) {
   if (rimasto.id === id) throw new Error(`ancora su ${id} (progresso ${rimasto.progresso})`);
 }
 
+export async function ettoreNelRitratto(page) {
+  const { w, h } = schermo(page);
+  const box = await page.evaluate(() => {
+    const raw = document.querySelector('#app').dataset.ettore;
+    return raw ? JSON.parse(raw) : null;
+  });
+  if (!box) throw new Error('Ettore non è in scena');
+  if (box.minX < 2 || box.minY < 2 || box.maxX > w - 2 || box.maxY > h - 2) {
+    throw new Error(`Ettore fuori dal ritratto ${JSON.stringify(box)} in ${w}×${h}`);
+  }
+}
+
 export async function giocaTutorial(page, { mouse, prefisso }) {
   const { w, h } = schermo(page);
   await puntatore(page, [{ x: w / 2, y: h * 0.72 }], mouse);
   await attendiPasso(page, 'b4-bottone');
+  await ettoreNelRitratto(page);
   await shot(page, `${prefisso}-bottone`);
   await puntatore(page, [await punto(page, 'bottone')], mouse);
   await attendiPasso(page, 'b5-gira');

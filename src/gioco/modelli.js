@@ -5,8 +5,16 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 /**
  * I GLB stanno in public/modelli/, nomi snake_case.
  * Scala di tutto il set: 1.35. Se un file manca, resta la mesh procedurale.
+ * Le ossa di Ettore non si staccano dallo scheletro: PARTI è solo il contratto dei nomi.
  */
 export const SCALA = 1.35;
+
+export const PARTI = {
+  ettore: [
+    'corpo', 'testa', 'giornale', 'coppola', 'mano_sx', 'mano_dx',
+    'palpebre', 'occhi', 'punta_dito', 'piedi',
+  ],
+};
 
 const cache = new Map();
 
@@ -124,7 +132,7 @@ export function creaTelecomando() {
 
 export function creaEttore() {
   const g = nominato('Ettore', new THREE.Group());
-  g.position.set(0.22, 0, -0.34);
+  g.position.set(0.17, -0.045, -0.364);
   g.rotation.y = -0.22;
   const corpo = nominato('corpo_ettore', mesh('scatola', [0.18, 0.2, 0.1], '#8fbfa8'));
   corpo.position.y = 0.22;
@@ -241,7 +249,7 @@ export function creaBottega() {
 
 export function indicizza(radice, mappa) {
   radice.traverse((nodo) => {
-    if (nodo.name) mappa.set(nodo.name, nodo);
+    if (nodo.name && !mappa.has(nodo.name)) mappa.set(nodo.name, nodo);
   });
 }
 
@@ -383,6 +391,40 @@ async function caricaAttrezzi(banco) {
     appoggia(radice, SCALA);
     radice.position.y += 0.002;
   }
+}
+
+/** Ettore v2: una SkinnedMesh. Null se il file o un osso di PARTI manca. */
+export async function caricaEttore() {
+  try {
+    const url = `${import.meta.env.BASE_URL}modelli/ettore.glb`;
+    const gltf = await new GLTFLoader().loadAsync(url);
+    const ettore = gltf.scene.getObjectByName('ettore');
+    if (!ettore) return null;
+    const mancanti = PARTI.ettore.filter((nome) => !ettore.getObjectByName(nome));
+    if (mancanti.length) return null;
+    const mesh = ettore.getObjectByName('ettore_mesh');
+    if (mesh) {
+      mesh.frustumCulled = false;
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+    }
+    return { ettore, clips: gltf.animations };
+  } catch {
+    return null;
+  }
+}
+
+/** Metri in gioco, rispetto a centro_banco: (+0.170, −0.045, −0.394), scala ×1.35. */
+export function sistemaEttore(ettore, banco) {
+  ettore.scale.setScalar(SCALA);
+  ettore.rotation.set(0, -0.22, 0);
+  const pos = new THREE.Vector3();
+  const centro = banco?.getObjectByName('centro_banco');
+  if (centro) centro.getWorldPosition(pos);
+  else pos.set(0, 0, 0.022 * SCALA);
+  pos.add(new THREE.Vector3(0.170, -0.045, -0.394));
+  ettore.position.copy(pos);
+  ettore.updateWorldMatrix(true, true);
 }
 
 /** Banco, telecomando e attrezzi. Null se il file o un nodo obbligatorio manca. */
