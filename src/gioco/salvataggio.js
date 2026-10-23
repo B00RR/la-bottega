@@ -1,11 +1,18 @@
-import { copione } from '../dati/contenuti.js';
+import { passi } from '../dati/contenuti.js';
 
 const CHIAVE = 'la-bottega:salvataggio';
 const BAK = 'la-bottega:salvataggio.bak';
-export const VERSIONE = 1;
+export const VERSIONE = 2;
 
-export function statoIniziale() {
-  return { versione: VERSIONE, indice: 0, linea: 0, saltato: false };
+export function statoSalvatoIniziale() {
+  return {
+    versione: VERSIONE,
+    indice: 0,
+    linea: 0,
+    saltato: false,
+    progressoGesto: 0,
+    parziali: [],
+  };
 }
 
 function leggi(chiave) {
@@ -16,41 +23,41 @@ function leggi(chiave) {
   }
 }
 
+/** La v1 non ha gli stessi passi: si ricomincia, non si indovina un indice. */
+function migra(dati) {
+  if (dati.versione < VERSIONE) return statoSalvatoIniziale();
+  return null;
+}
+
 function analizza(grezzo) {
   if (!grezzo) return null;
   try {
     const dati = JSON.parse(grezzo);
-    if (!dati || typeof dati !== 'object') return null;
-    if (typeof dati.versione !== 'number') return null;
+    if (!dati || typeof dati !== 'object' || typeof dati.versione !== 'number') return null;
     if (dati.versione > VERSIONE) return null;
     const normalizzato = dati.versione < VERSIONE ? migra(dati) : dati;
     if (!normalizzato || normalizzato.versione !== VERSIONE) return null;
     if (!Number.isInteger(normalizzato.indice)) return null;
-    if (normalizzato.indice < 0 || normalizzato.indice >= copione.length) return null;
-    const passo = copione[normalizzato.indice];
-    const righe = passo.righe?.length ?? 1;
-    const linea = Number.isInteger(normalizzato.linea) ? normalizzato.linea : 0;
-    if (linea < 0 || linea >= righe) return null;
+    if (normalizzato.indice < 0 || normalizzato.indice >= passi.length) return null;
+    const progresso = Number(normalizzato.progressoGesto);
+    const parziali = Array.isArray(normalizzato.parziali)
+      ? normalizzato.parziali.filter((id) => typeof id === 'string')
+      : [];
     return {
       versione: VERSIONE,
       indice: normalizzato.indice,
-      linea,
+      linea: 0,
       saltato: Boolean(normalizzato.saltato),
+      progressoGesto: Number.isFinite(progresso) ? Math.min(1, Math.max(0, progresso)) : 0,
+      parziali,
     };
   } catch {
     return null;
   }
 }
 
-function migra(dati) {
-  if (dati.versione === 0) {
-    return { versione: VERSIONE, indice: 0, linea: 0, saltato: false };
-  }
-  return null;
-}
-
 export function carica() {
-  return analizza(leggi(CHIAVE)) || analizza(leggi(BAK)) || statoIniziale();
+  return analizza(leggi(CHIAVE)) || analizza(leggi(BAK)) || statoSalvatoIniziale();
 }
 
 /** Copia il salvataggio buono, poi scrive. localStorage non ha una rename atomica. */
@@ -58,8 +65,10 @@ export function salva(stato) {
   const json = JSON.stringify({
     versione: VERSIONE,
     indice: stato.indice,
-    linea: stato.linea,
+    linea: 0,
     saltato: Boolean(stato.saltato),
+    progressoGesto: Math.min(1, Math.max(0, Number(stato.progressoGesto) || 0)),
+    parziali: Array.isArray(stato.parziali) ? stato.parziali : [],
   });
   try {
     const attuale = localStorage.getItem(CHIAVE);

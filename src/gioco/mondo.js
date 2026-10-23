@@ -1,70 +1,91 @@
-const CAMPI_PARTE = [
-  'aperto',
-  'pulizia',
-  'scoperta',
-  'estratta',
-  'inserita',
-  'aPosto',
-  'avvolto',
-  'scoperto',
-];
+import { passi } from '../dati/contenuti.js';
 
-export function mondoVuoto() {
+export function statoIniziale() {
   return {
-    oggetti: {
-      torcia: { visibile: false, posa: 'ingresso', acceso: false },
-      telecomando: { visibile: false, posa: 'ingresso', acceso: false },
-    },
-    parti: {
-      tappo: { aperto: 0 },
-      macchia: { pulizia: 0, scoperta: false },
-      contatto: { pulizia: 0 },
-      pila_a: { estratta: false },
-      pila_b: { estratta: false },
-      pila_nuova_a: { inserita: false },
-      pila_nuova_b: { inserita: false },
-      guscio: { aperto: 0 },
-      molla: { aPosto: false, scoperta: false },
-      filo: { avvolto: 0, scoperto: false },
-    },
-    indizi: [],
-    tv: false,
+    shutter: 0,
+    cartello: 'bottega',
+    fine: 0,
+    musica: 0,
     cassetto: 0,
+    tv: 0,
+    strumenti: [],
+    indizi: [],
+    spuntati: [],
+    ettore: { posa: 'giornale', cappello: 0, mano: 0, strizza: 0 },
+    torcia: {
+      visibile: false,
+      posa: 'banco',
+      yaw: 0,
+      tilt: 0,
+      roll: 0,
+      accesa: false,
+      premuta: 0,
+      bottone: 0,
+      tappo: 0,
+      vite: 0,
+      pulizia: 0,
+      macchia: 0,
+      pileVecchie: 0,
+      pileNuove: 0,
+      giri: 0,
+    },
+    telecomando: {
+      visibile: false,
+      yaw: 0,
+      tilt: 0,
+      premuto: 0,
+      pancia: 0,
+      fessura: 0,
+      guscio: 0,
+      nastro: 0,
+      molla: 0,
+      filoVisto: 0,
+      mollaVista: 0,
+    },
+    flash: 0,
   };
 }
 
-export function applica(mondo, ops) {
-  if (!ops) return;
-  for (const op of ops) {
-    if (op.op === 'oggetto') {
-      const oggetto = mondo.oggetti[op.id];
-      if (!oggetto) continue;
-      if (op.visibile != null) oggetto.visibile = op.visibile;
-      if (op.posa) oggetto.posa = op.posa;
-      if (op.acceso != null) oggetto.acceso = op.acceso;
-    } else if (op.op === 'parte') {
-      const parte = mondo.parti[op.id];
-      if (!parte) continue;
-      for (const campo of CAMPI_PARTE) {
-        if (op[campo] != null) parte[campo] = op[campo];
-      }
-    } else if (op.op === 'indizio') {
-      if (!mondo.indizi.includes(op.testo)) mondo.indizi.push(op.testo);
-    } else if (op.op === 'tv') {
-      mondo.tv = true;
-    } else if (op.op === 'cassetto') {
-      mondo.cassetto = op.valore;
-    }
-  }
+function unici(lista) {
+  return [...new Set(lista.filter(Boolean))];
 }
 
-export function ricostruisci(copione, indice) {
-  const mondo = mondoVuoto();
-  for (let i = 0; i < indice; i += 1) {
-    applica(mondo, copione[i].immediato);
-    applica(mondo, copione[i].alCompletamento);
+export function applica(stato, patch) {
+  if (!patch) return stato;
+  for (const [chiave, valore] of Object.entries(patch)) {
+    if (chiave === 'indizi') stato.indizi = unici([...stato.indizi, ...valore]);
+    else if (chiave === 'spunta') stato.spuntati = unici([...stato.spuntati, ...valore]);
+    else if (chiave === 'sblocca') {
+      if (valore && !stato.strumenti.includes(valore)) stato.strumenti = [...stato.strumenti, valore];
+    } else if (valore && typeof valore === 'object' && !Array.isArray(valore)) {
+      stato[chiave] = { ...(stato[chiave] || {}), ...valore };
+    } else stato[chiave] = valore;
   }
-  const corrente = copione[indice];
-  if (corrente) applica(mondo, corrente.immediato);
-  return mondo;
+  return stato;
+}
+
+export function clona(stato) {
+  return {
+    ...stato,
+    strumenti: [...stato.strumenti],
+    indizi: [...stato.indizi],
+    spuntati: [...stato.spuntati],
+    ettore: { ...stato.ettore },
+    torcia: { ...stato.torcia },
+    telecomando: { ...stato.telecomando },
+  };
+}
+
+/** Stato all'inizio del passo: fatti precedenti, attrezzi fino a qui, entra del passo. */
+export function ricostruisci(indice, elenco = passi) {
+  const stato = statoIniziale();
+  const i = Math.max(0, Math.min(indice, elenco.length - 1));
+  for (let n = 0; n < i; n += 1) {
+    applica(stato, elenco[n].sblocca ? { sblocca: elenco[n].sblocca } : null);
+    applica(stato, elenco[n].fatto);
+  }
+  const corrente = elenco[i];
+  if (corrente?.sblocca) applica(stato, { sblocca: corrente.sblocca });
+  applica(stato, corrente?.entra);
+  return stato;
 }

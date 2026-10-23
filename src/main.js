@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import './stile.css';
 import { AudioBottega } from './gioco/audio.js';
 import { Gioco } from './gioco/Gioco.js';
 import { Interfaccia } from './gioco/interfaccia.js';
@@ -37,12 +38,7 @@ const gioco = new Gioco({
   app,
   scena,
   audio,
-  ui: new Interfaccia(app, {
-    seleziona: (id) => gioco.seleziona(id),
-    salta: () => gioco.salta(),
-    ricomincia: () => gioco.ricomincia(),
-    alternaAudio: () => gioco.alternaAudio(),
-  }),
+  ui: new Interfaccia(app),
 });
 
 const timer = new THREE.Timer();
@@ -50,6 +46,16 @@ timer.connect(document);
 scena.renderer.setAnimationLoop((tempo) => {
   timer.update(tempo);
   const dt = Math.min(timer.getDelta(), 0.1);
-  gioco.aggiorna(dt);
-  scena.renderer.render(scena.scene, scena.camera);
+  let dirty = false;
+  try {
+    dirty = gioco.aggiorna(dt);
+  } catch (errore) {
+    console.error(errore);
+    dirty = true;
+  }
+  if (dirty) {
+    scena.renderer.render(scena.scene, scena.camera);
+    scena.dopoRender(dt);
+  }
 });
+window.addEventListener('resize', () => scena.ridimensiona());

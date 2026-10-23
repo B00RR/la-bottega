@@ -2,97 +2,81 @@
 <html lang="it">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
-    />
-    <meta name="theme-color" content="#f3d5c4" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#c4844e" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect fill='%23c4844e' width='16' height='16'/%3E%3C/svg%3E" />
     <title>La Bottega</title>
-    <link rel="stylesheet" href="/src/stile.css" />
+    <style>
+      :root { --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom); }
+      html, body { margin: 0; height: 100%; background: #c4844e; }
+      #saracinesca {
+        position: fixed; inset: 0; z-index: 30; background:
+          repeating-linear-gradient(#c4844e, #c4844e 14px, #b3763d 15px, #a86b3a 28px);
+        display: flex; align-items: flex-end; justify-content: center;
+        transition: none; touch-action: none;
+      }
+      #cartello {
+        position: absolute; top: 18%; left: 50%; transform: translateX(-50%);
+        background: #f4d2c0; color: #3c291c; font: 600 22px Georgia, serif;
+        padding: 14px 18px; border-radius: 6px;
+      }
+      #maniglia {
+        width: 74px; height: 18px; margin-bottom: calc(28px + var(--safe-bottom));
+        background: #f0b86e; border-radius: 9px; box-shadow: 0 2px 0 #3c291c55;
+      }
+      #gesso { position: absolute; bottom: 18%; font: 700 42px Georgia, serif; color: #fff6ea; }
+    </style>
   </head>
   <body>
-    <div id="app" data-pronto="0">
+    <div id="app" data-pronto="0" data-input="1">
       <canvas id="vista"></canvas>
-      <div id="lampo"></div>
-      <div id="scintille"></div>
+      <div id="saracinesca">
+        <p id="cartello">La Bottega · Riparazioni</p>
+        <p id="gesso" hidden>↑</p>
+        <div id="maniglia"></div>
+      </div>
+      <div id="bolla" hidden><p class="riga" aria-live="polite"></p></div>
+      <p id="correzione" hidden></p>
+      <div id="medaglione" aria-hidden="true"></div>
       <div id="punto-aiuto" hidden></div>
       <div id="mano-aiuto" hidden>
         <svg viewBox="0 0 64 64" width="52" height="52" aria-hidden="true">
-          <path
-            fill="#f0c7a8"
-            stroke="#3c291c"
-            stroke-width="2"
-            d="M18 28 V16 a4 4 0 0 1 8 0 V26 M26 24 V12 a4 4 0 0 1 8 0 V26 M34 24 V16 a4 4 0 0 1 8 0 V34 c0 12-8 18-16 18 h-4 c-8 0-14-6-14-14 v-8 a4 4 0 0 1 8 0 V28"
-          />
+          <path fill="#f4d2c0" stroke="#3c291c" stroke-width="2" d="M18 28 V16 a4 4 0 0 1 8 0 V26 M26 24 V12 a4 4 0 0 1 8 0 V26 M34 24 V16 a4 4 0 0 1 8 0 V34 c0 12-8 18-16 18 h-4 c-8 0-14-6-14-14 v-8 a4 4 0 0 1 8 0 V28"/>
         </svg>
       </div>
-      <div id="cursore-strumento" class="cursore" hidden></div>
+      <div id="lente-ui" hidden><canvas width="256" height="256"></canvas></div>
       <div id="indizio-volo" hidden></div>
-
-      <button id="taccuino-btn" type="button">Taccuino</button>
-      <button id="impostazioni-btn" type="button" aria-label="Impostazioni">
+      <button id="taccuino-btn" type="button" aria-label="Taccuino" hidden>
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 4 h10 a2 2 0 0 1 2 2 v14 H8 a2 2 0 0 0-2 2 z" fill="#fff6ea" stroke="#3c291c"/><path d="M8 8 h7 M8 12 h7" stroke="#3c291c"/></svg>
+      </button>
+      <button id="ingranaggio" type="button" aria-label="Impostazioni">
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6" />
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.6"
-            d="M12 3 v3 M12 18 v3 M3 12 h3 M18 12 h3 M5.6 5.6 l2 2 M16.4 16.4 l2 2 M18.4 5.6 l-2 2 M7.6 16.4 l-2 2"
-          />
+          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          <path fill="none" stroke="currentColor" stroke-width="1.6" d="M12 3 v3 M12 18 v3 M3 12 h3 M18 12 h3 M5.6 5.6 l2 2 M16.4 16.4 l2 2 M18.4 5.6 l-2 2 M7.6 16.4 l-2 2"/>
         </svg>
       </button>
-
-      <section id="istruzione" hidden>
-        <p class="verbo"></p>
-        <p class="testo"></p>
-      </section>
-
-      <section id="cassetta" hidden>
-        <div class="attrezzi"></div>
-      </section>
-
-      <section id="dialogo" hidden>
-        <div class="ritratto" aria-hidden="true">
-          <svg viewBox="0 0 80 80">
-            <circle cx="40" cy="36" r="22" fill="#f0c7a8" />
-            <path d="M18 34 Q40 8 62 34 Q58 18 40 16 Q22 18 18 34" fill="#d5d5d5" />
-            <rect x="24" y="44" width="32" height="6" rx="3" fill="#b9b9b9" />
-            <circle cx="32" cy="36" r="2.2" fill="#3c291c" />
-            <circle cx="48" cy="36" r="2.2" fill="#3c291c" />
-            <path d="M22 62 h36 v10 h-36z" fill="#c4623a" />
-            <path d="M30 62 h20 v12 h-20z" fill="#8fbfa8" />
-          </svg>
-        </div>
-        <div class="bolla">
-          <p class="nome">Ettore</p>
-          <p class="riga" aria-live="polite"></p>
-          <p class="continua">tocca per continuare</p>
-        </div>
-      </section>
-
-      <p id="correzione" hidden aria-live="polite"></p>
-
+      <section id="cassetta" hidden><div class="attrezzi"></div></section>
       <section id="taccuino" hidden>
-        <h2>Taccuino</h2>
-        <p class="vuoto">Il taccuino è ancora vuoto.</p>
-        <ul></ul>
+        <div class="pagine">
+          <ul id="lista-indizi"></ul>
+          <p class="timbro-pagina">RIPARATO</p>
+        </div>
         <button id="chiudi-taccuino" type="button">Chiudi</button>
       </section>
-
       <section id="impostazioni" hidden>
-        <h2>Impostazioni</h2>
         <button id="audio-toggle" type="button" aria-pressed="true">Audio acceso</button>
+        <button id="movimento" type="button" aria-pressed="false">Riduci movimento</button>
+        <button id="testo" type="button" aria-pressed="false">Testo più grande</button>
         <button id="chiudi-imp" type="button">Chiudi</button>
-        <button id="salta" type="button">Salta il tutorial</button>
+        <button id="salta" type="button">Salta tutorial</button>
+        <p id="timbro"></p>
       </section>
-
-      <section id="fine" hidden>
-        <h1>Fine del tutorial</h1>
-        <p>Domani, dalla signora del terzo piano.</p>
-        <button id="ricomincia" type="button">Ricomincia</button>
-      </section>
-
-      <p id="timbro"></p>
+      <div id="azioni" hidden>
+        <button id="continua" type="button">Continua domani</button>
+        <button id="rigioca" type="button">Rigioca</button>
+      </div>
+      <div id="paesaggio" hidden><div class="sagoma"></div></div>
+      <div id="zone-debug" hidden></div>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>
