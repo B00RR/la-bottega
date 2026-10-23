@@ -150,7 +150,7 @@ export async function tieni(page, p, ms, mouse) {
 
 export async function strumento(page, id, mouse) {
   const slot = page.locator(`[data-strumento="${id}"]`);
-  await slot.waitFor({ state: 'visible' });
+  await slot.waitFor({ state: 'visible', timeout: 8000 });
   const box = await slot.boundingBox();
   const { w, h } = schermo(page);
   visibile({ x: box.x + box.width / 2, y: box.y + box.height / 2 }, w, h, id);
