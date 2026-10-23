@@ -42,3 +42,7 @@ Per questo tutorial il router ha indicato:
 Il tutorial si apre in bottega, senza menu. Ettore fa provare la torcia (guardare, analizzare, smontare, riparare, sostituire) e poi il telecomando, con un attrezzo nuovo alla volta. Un oggetto nuovo si aggiunge nei dati in `src/dati/`, non con codice dedicato.
 
 Il progresso sta in `localStorage` (`la-bottega:salvataggio`, versione 1) e un ricaricamento riprende il passo corrente.
+
+## Verifica
+
+La prova sul telefono (`npx playwright test --project=telefono -g "il telefono gioca"`) è arrivata fino a «Ossido. Prendi il pennellino.» e poi è scaduta (4 minuti) durante il ricaricamento. Apertura, sguardo, lente, esitazione e svitamento sono stati giocati con il dito. Restano da chiudere nello stesso giro: strumento sbagliato, ricarico a metà strofinata, telecomando, schermata finale e il giro col mouse sul desktop. Il salto del tutorial dalle impostazioni era già passato in una prova precedente.
