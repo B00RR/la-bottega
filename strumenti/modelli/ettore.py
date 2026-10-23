@@ -20,9 +20,9 @@ from mathutils import Vector, Matrix, Euler, Quaternion
 
 S = 1.35
 C = {
-    "pelle": "#EDB89A", "naso": "#E39C7E", "guance": "#E8977C", "pelo": "#FFF6EA",
-    "coppola": "#6B4E3D", "coppola_scuro": "#5A4134", "occhiali": "#6B4E3D", "camicia": "#8FBFA8",
-    "camicia_ombra": "#7FAE98", "grembiule": "#9A5F38", "grembiule_bordo": "#86512F",
+    "pelle": "#EBC3A6", "naso": "#EBC3A6", "guance": "#E8977C", "pelo": "#FFF6EA",
+    "coppola": "#6B4E3D", "coppola_scuro": "#5A4134", "occhiali": "#6B4E3D", "camicia": "#6F9E88",
+    "camicia_ombra": "#5F8E78", "grembiule": "#9A5F38", "grembiule_bordo": "#86512F",
     "pantaloni": "#5A4A40", "scarpe": "#6B4E3D", "occhi": "#3C291C", "luce": "#FFF6EA",
     "carta": "#E9D9BE", "palpebra": "#E3A98A", "foto": "#8FBFA8", "carta_chiara": "#F3E8D4", "inchiostro": "#D2BEA4", "titolo": "#3C291C",
     "matita": "#F0B86E", "mina": "#5A4A40", "legno": "#D29A62",
