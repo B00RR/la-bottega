@@ -6,7 +6,8 @@ Draw-call strategy (budget: whole scene < 50 draw calls, < 40k tris):
   * colours live in a per-corner colour attribute "Col" (glTF COLOR_0), NOT in materials;
   * every asset uses the same two shared materials:
         bottega_opaco    (plastic / wood / cloth / paper, rough 0.62, metal 0)
-        bottega_metallo  (steel / silver / copper,        rough 0.35, metal 0.7)
+        bottega_metallo  (steel / silver / copper,        rough 0.40, metal 0.4)
+        (correzioni PR #4, 2026-10-23: metal 0.7 -> 0.4 so metals stay light without a strong environment)
     -> a mesh is 1 draw call (2 if it mixes opaco + metallo faces);
   * only parts whose colour the game animates get their own flat material
     (torcia_vetro emissive, torcia_ossido, torcia_contatto) plus the magnifier glass.
@@ -38,8 +39,12 @@ PAL = {
     "carta": "#E9D9BE",         # tape core, cardboard
     "grafite": "#5A4A40",       # IR window, rubber, wire insulation
     "nocciola": "#6B4E3D",      # remote shell (dark, so pastel buttons pop)
+    # correzioni PR #4 (revisione DA 2026-10-23)
+    "acciaio_chiaro": "#C9BFB4",  # torch head metal base (light warm steel, bottega_metallo)
+    "panno": "#E3EED8",           # bench cloth: pale mint, +80% luminance vs salvia rings
 }
-METALLIC = {"acciaio", "argento", "rame"}
+METALLIC = {"acciaio", "argento", "rame", "acciaio_chiaro"}
+AO_MAX = 0.14   # vertex AO: contact corners darkened by 14% (sRGB), fading to 0
 
 def lin(hexstr):
     h = hexstr.lstrip("#")
@@ -84,7 +89,7 @@ def mat_flat(name, color, rough=0.6, metal=0.0, emission=None, alpha=None):
     return m
 
 def OPACO():   return mat_vc("bottega_opaco", 0.62, 0.0)
-def METALLO(): return mat_vc("bottega_metallo", 0.35, 0.7)
+def METALLO(): return mat_vc("bottega_metallo", 0.40, 0.4)
 
 def ensure_slots(me):
     """Slot 0 = opaco, slot 1 = metallo (same order on every vc mesh so join() merges cleanly)."""
@@ -108,6 +113,36 @@ def paint(ob, key, as_mat=None, faces=None):
         for li in p.loop_indices:
             att.data[li].color = col
     return ob
+
+def ao(ob, z0, h, strength=None, inside=None, faces=None):
+    """Vertex AO baked into 'Col': corners at world z <= z0 are darkened by `strength` (default AO_MAX,
+    i.e. 14% in sRGB), fading smoothly to 0 at z0 + h. `inside(world_co)` optionally limits the region,
+    `faces` limits it to a set of polygon indices. Returns the number of corners touched."""
+    s = AO_MAX if strength is None else strength
+    bpy.context.view_layer.update()
+    me = ob.data
+    if "Col" not in me.color_attributes:
+        return 0
+    att = me.color_attributes["Col"]
+    mw = ob.matrix_world
+    n = 0
+    for p in me.polygons:
+        if faces is not None and p.index not in faces:
+            continue
+        for li in p.loop_indices:
+            w = mw @ me.vertices[me.loops[li].vertex_index].co
+            if inside is not None and not inside(w):
+                continue
+            t = 1.0 - (w.z - z0) / h
+            if t <= 0:
+                continue
+            t = min(1.0, t)
+            t = t * t * (3 - 2 * t)                      # smoothstep
+            c = list(att.data[li].color_srgb)
+            f = 1.0 - s * t
+            att.data[li].color_srgb = (c[0] * f, c[1] * f, c[2] * f, c[3])
+            n += 1
+    return n
 
 def flat(ob, material):
     for a in list(ob.data.color_attributes):

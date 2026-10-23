@@ -7,8 +7,8 @@
 | lente | out/lente.glb | 21 | 620 | 2 | bottega_opaco, lente_vetro | 0.073×0.146×0.017 | 0.099×0.198×0.023 |
 | cacciavite | out/cacciavite.glb | 13 | 288 | 2 | bottega_metallo, bottega_opaco | 0.026×0.166×0.026 | 0.035×0.224×0.035 |
 | pennellino | out/pennellino.glb | 13 | 360 | 2 | bottega_opaco | 0.019×0.153×0.019 | 0.025×0.207×0.025 |
-| leva | out/leva.glb | 22 | 360 | 1 | bottega_opaco | 0.018×0.110×0.008 | 0.024×0.148×0.010 |
-| pinzette | out/pinzette.glb | 17 | 272 | 2 | bottega_metallo | 0.015×0.120×0.008 | 0.020×0.162×0.011 |
+| leva | out/leva.glb | 22 | 360 | 1 | bottega_opaco | 0.027×0.110×0.011 | 0.036×0.148×0.015 |
+| pinzette | out/pinzette.glb | 17 | 272 | 2 | bottega_metallo | 0.023×0.120×0.012 | 0.030×0.162×0.016 |
 | nastro | out/nastro.glb | 17 | 460 | 1 | bottega_opaco | 0.058×0.023×0.067 | 0.078×0.031×0.091 |
 | banco | out/banco.glb | 107 | 1676 | 4 | bottega_opaco | 0.800×0.731×0.460 | 1.080×0.987×0.621 |
 
@@ -112,3 +112,36 @@ banco pivot=(0.0000, 0.0000, 0.0000)
   vassoietto pivot=(-0.2700, -0.0010, 0.0500)
 ```
 Issues: none
+
+
+## Correzioni PR #4 (2026-10-23): prima / dopo
+| asset | tris prima | tris dopo | draw call prima | draw call dopo | ingombro prima (m) | ingombro dopo (m) | cosa cambia |
+|---|---|---|---|---|---|---|---|
+| torcia | 3408 | 3408 | 10 | 10 | 0.114×0.259×0.114 | 0.114×0.259×0.114 | testa #C9BFB4, metallo 0.4, AO base |
+| telecomando | 2636 | 2636 | 6 | 6 | 0.066×0.030×0.177 | 0.066×0.030×0.177 | metallo 0.4 (molla), AO fondo |
+| lente | 620 | 620 | 2 | 2 | invariato | invariato | file non toccato |
+| cacciavite | 288 | 288 | 2 | 2 | 0.026×0.166×0.026 | 0.026×0.166×0.026 | punta #C9BFB4, metallo 0.4 |
+| pennellino | 360 | 360 | 2 | 2 | invariato | invariato | file non toccato |
+| leva | 360 | 360 | 1 | 1 | 0.018×0.110×0.008 | 0.027×0.110×0.011 | silhouette ×1.5 |
+| pinzette | 272 | 272 | 2 | 2 | 0.015×0.120×0.008 | 0.023×0.120×0.012 | silhouette ×1.5, #C9BFB4, metallo 0.4 |
+| nastro | 460 | 460 | 1 | 1 | 0.058×0.023×0.067 | 0.058×0.023×0.067 | AO base del rotolo |
+| banco | 1676 | 1676 | 4 | 4 | 0.800×0.731×0.460 | 0.800×0.731×0.460 | panno #E3EED8 + impuntura salvia, AO |
+| **totale** | **10080** | **10080** | **30** | **30** | | | 25% di 40 000 tris, 60% di 50 draw call |
+
+### Confronto dei nodi con la versione della PR #4 (`scripts/confronta_nodi.py`)
+```
+torcia: nodi=13 nomi+gerarchia IDENTICI; pivot/rot/scala identici; materiali per primitiva identici; tris invariati
+telecomando: nodi=16 nomi+gerarchia IDENTICI; pivot/rot/scala identici; materiali per primitiva identici; tris invariati
+lente: nodi=4 nomi+gerarchia IDENTICI; pivot/rot/scala identici; materiali per primitiva identici; tris invariati
+cacciavite: nodi=3 nomi+gerarchia IDENTICI; pivot/rot/scala identici; materiali per primitiva identici; tris invariati
+pennellino: nodi=3 nomi+gerarchia IDENTICI; pivot/rot/scala identici; materiali per primitiva identici; tris invariati
+leva: nodi=2 nomi+gerarchia IDENTICI; pivot/rot/scala identici; materiali per primitiva identici; tris invariati
+pinzette: nodi=4 nomi+gerarchia IDENTICI; pivot/rot/scala identici; materiali per primitiva identici; tris invariati
+nastro: nodi=2 nomi+gerarchia IDENTICI; pivot/rot/scala identici; materiali per primitiva identici; tris invariati
+banco: nodi=7 nomi+gerarchia IDENTICI; pivot/rot/scala identici; materiali per primitiva identici; tris invariati
+ESITO: OK - nessun nodo rinominato, spostato o riparentato
+```
+
+### Re-import in Blender (`scripts/reimport_check.py`, tutti e 9 i GLB)
+Le 64 righe `CHK` (nome, tipo, genitore, posizione nel mondo, triangoli di ogni oggetto) sono **identiche** prima e dopo
+le correzioni (`diff` vuoto). Totale re-importato: 10 080 triangoli.

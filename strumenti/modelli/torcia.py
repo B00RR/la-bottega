@@ -9,6 +9,8 @@ v2 vs approved v1 (same look, same proportions, same on-axis unscrewing cap):
     e' verde") - child of `tappo`, cleaned with the brush;
   * the dead batteries carry an embossed "2019" on the end that faces the cap (B8);
   * batteries raised 6 mm so they rest on the spring.
+Correzioni PR #4 (revisione DA 2026-10-23): torch head painted acciaio_chiaro #C9BFB4 on
+bottega_metallo (metal 0.4); vertex AO -14% at the base (tappo), -12% on the tube/cap crevice and the screw.
 Units: metres, Y up, same unscaled units as scena.js (game applies scale 1.35 to the whole set).
 """
 import bpy, math, os, sys
@@ -43,15 +45,16 @@ def build():
         (0.0, 0.0955, "interno"), (0.0355, 0.0955, "interno"),
         (0.0355, 0.0300, "terracotta"), (0.0400, 0.0300, "terracotta"),
         (R, 0.0330, "terracotta"), (R, 0.1880, "terracotta"),
-        (0.0455, 0.1940, "acciaio"), (0.0540, 0.2260, "acciaio"),
+        (0.0455, 0.1940, "acciaio_chiaro"), (0.0540, 0.2260, "acciaio_chiaro"),
         (0.0570, 0.2320, "miele"), (0.0570, 0.2440, "miele"), (0.0540, 0.2500, "miele"),
-        (0.0450, 0.2500, "miele"), (0.0450, 0.2470, "acciaio"), (0.0, 0.2470, "acciaio"),
+        (0.0450, 0.2500, "miele"), (0.0450, 0.2470, "acciaio_chiaro"), (0.0, 0.2470, "acciaio_chiaro"),
     ])
     rings = [lathe("ring", [(R - 0.001, zc - 0.007, "salvia"), (R + 0.0025, zc - 0.005, "salvia"),
                             (R + 0.0025, zc + 0.005, "salvia"), (R - 0.001, zc + 0.007, "salvia")],
                    smooth_angle=60) for zc in (0.070, 0.165)]
     sw_base = box("sw_base", (0.020, 0.012, 0.034), 0.004, "salvia", 2, loc=(0, -(R - 0.001), 0.118))
     join(corpo, rings + [sw_base])
+    ao(corpo, 0.030, 0.012, strength=0.12)     # crevice where the tube sits on the cap
 
     # bottone: origin on the button's base face, presses along three.js -Z (Blender +Y)
     bottone = box("bottone", (0.012, 0.010, 0.022), 0.0035, "miele", 2, loc=(0, -(R + 0.004), 0.120))
@@ -75,6 +78,7 @@ def build():
         bumps.append(box("bump", (0.005, 0.007, 0.016), 0.0016, "salvia", 1,
                          loc=(0.0448 * math.cos(a), 0.0448 * math.sin(a), 0.0152), rot=(0, 0, a)))
     join(tappo, bumps)
+    ao(tappo, 0.0, 0.014)                       # vertex AO: base of the torch (contact with the bench)
     set_origin(tappo, (0, 0, 0.030))
 
     # macchia: green crust on the cap rim (B5 "sul bordo del tappo"), lens target
@@ -97,6 +101,7 @@ def build():
         c = box("cut", (sx, sy, 0.006), 0.0005, "inchiostro", 1, loc=(0, 0, -0.0050), as_mat="metallo")
         boolean(vite, c)
     smooth(vite, 30)
+    ao(vite, -0.0040, 0.008, strength=0.12)
     set_origin(vite, (0, 0, -0.0015))
 
     # contatto: plate + two coil springs on the cap neck (ON THE CAP), oxidised green

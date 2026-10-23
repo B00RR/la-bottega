@@ -97,6 +97,7 @@ def build():
     parts.append(box("plate", (0.010, 0.0012, 0.010), 0.0003, "argento", 1,
                      loc=(0.0115, -0.0810, WALL + 0.0068), as_mat="opaco"))
     join(sotto, parts)
+    ao(sotto, 0.0, 0.006)          # correzioni PR #4: vertex AO -14% on the bottom (contact with the bench)
 
     # ---------------- guscio (top shell) (lid + all static buttons)
     sopra = half_shell("guscio", True, "nocciola", "acciaio")

@@ -10,6 +10,8 @@ PRIMI_ISTANTI 5.1: "vassoietto (sx) e cassetto (dx) sul banco, nel mondo":
   * cassettiera (small drawer unit, right) static in `banco`; `cassetto` is its own node,
     pivot = closed position, opens by sliding along three.js +Z (towards the camera):
     cassetto.position.z = APERTURA * t, APERTURA = 0.075; it carries pila_nuova_a/_b (B10).
+Correzioni PR #4 (revisione DA 2026-10-23): panno #E3EED8 with sage stitching; vertex AO -14% on the
+feet, under the cassettiera, inside the vassoietto and the drawer (-12% where the legs meet the shelf).
 Front of the bench faces the camera (three.js +Z = Blender -Y).
 """
 import bpy, math, os, sys
@@ -45,11 +47,13 @@ def build():
             parts.append(box("leg", (0.05, 0.05, ZT - TT - LEG_Z), 0.005, "legno_scuro", 1,
                              loc=(x, y, (ZT - TT + LEG_Z) / 2)))
     parts.append(box("shelf", (TW - 0.12, TD - 0.10, 0.022), 0.003, "legno", 1, loc=(0, 0, LEG_Z + 0.16)))
-    # panno (cloth mat) with a cream stitched border
-    parts.append(box("panno", (0.250, 0.180, 0.004), 0.0012, "salvia", 1, loc=(0, -0.022, -0.002)))
+    # panno (cloth mat) with a sage stitched border (correzioni PR #4: cloth #E3EED8, far lighter than
+    # the torch's sage rings #8FBFA8 -> relative luminance 0.824 vs 0.459, +80%; stitching salvia)
+    parts.append(box("panno", (0.250, 0.180, 0.004), 0.0012, "panno", 1, loc=(0, -0.022, -0.002)))
     for (sx, sy, x, y) in ((0.236, 0.0025, 0, -0.022 - 0.083), (0.236, 0.0025, 0, -0.022 + 0.083),
-                           (0.0025, 0.166, -0.118, -0.022), (0.0025, 0.166, 0.118, -0.022)):
-        parts.append(box("cucitura", (sx, sy, 0.0008), 0.0, "crema", 1, loc=(x, y, 0.0001)))
+                           (0.0025, 0.1628, -0.118, -0.022), (0.0025, 0.1628, 0.118, -0.022)):
+        # (side strips stop 0.1 mm short of the long ones: no overlapping coplanar faces at the corners)
+        parts.append(box("cucitura", (sx, sy, 0.0008), 0.0, "salvia", 1, loc=(x, y, 0.0001)))
     # vassoietto (tin tray)
     tx, ty = TRAY
     tray = box("vassoietto_m", (0.125, 0.092, 0.018), 0.006, "acciaio", 2, loc=(tx, ty, ZT + 0.009), as_mat="opaco")
@@ -71,6 +75,14 @@ def build():
     plank0 = parts.pop(0)
     join(plank0, parts)
     plank0.name = "banco_mesh"
+    # vertex AO (correzioni PR #4): -14% at the contacts, fading upwards
+    ao(plank0, LEG_Z, 0.09)                                               # feet of the bench
+    ao(plank0, LEG_Z + 0.149, 0.03, strength=0.12,                        # low shelf corners against the legs
+       inside=lambda w: abs(abs(w.x) - (TW / 2 - 0.045)) < 0.03 and abs(abs(w.y) - (TD / 2 - 0.045)) < 0.03)
+    ao(plank0, ZT, 0.016,                                                 # cassettiera on the bench top
+       inside=lambda w: abs(w.x - cx) < 0.0835 and abs(w.y - cy) < 0.067)
+    ao(plank0, ZT + 0.0025, 0.014,                                        # vassoietto: inside + foot
+       inside=lambda w: abs(w.x - tx) < 0.0635 and abs(w.y - ty) < 0.0465)
     set_origin(plank0, (0, 0, 0))
     parent_keep(plank0, root)
 
@@ -88,6 +100,8 @@ def build():
     sides[-1].rotation_euler = (math.pi / 2, 0, 0)
     sides[-1].location = (cx, front_y - 0.003, dz + 0.024)
     join(drawer, sides)
+    ao(drawer, dz + 0.004, 0.016,                                         # inside of the drawer
+       inside=lambda w: abs(w.x - cx) < 0.0665 and front_y + 0.004 < w.y < front_y + 0.1145)
     set_origin(drawer, (cx, front_y, dz))
     parent_keep(drawer, root)
     # new batteries lying along X inside the drawer, near the front so they show when it opens
