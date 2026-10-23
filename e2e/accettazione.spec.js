@@ -194,12 +194,110 @@ test.describe('accettazione', () => {
         const dentro = await page.evaluate(() => {
           const carta = document.querySelector('#taccuino').getBoundingClientRect();
           const chiudi = document.querySelector('#chiudi-taccuino').getBoundingClientRect();
-          return chiudi.left >= carta.left && chiudi.right <= carta.right
-            && chiudi.top >= carta.top && chiudi.bottom <= carta.bottom;
+          const timbro = document.querySelector('.timbro-pagina').getBoundingClientRect();
+          const pina = document.querySelector('#taccuino .pina').getBoundingClientRect();
+          const sta = (r) => r.width > 8 && r.height > 8
+            && r.left >= carta.left - 1 && r.right <= carta.right + 1
+            && r.top >= carta.top + 4 && r.bottom <= carta.bottom - 4;
+          const tocca = (a, b) => a.left < b.right - 2 && a.right > b.left + 2
+            && a.top < b.bottom - 2 && a.bottom > b.top + 2;
+          return {
+            chiudi: sta(chiudi),
+            timbro: sta(timbro) && timbro.bottom <= pina.top + 2,
+            pina: sta(pina) && pina.bottom <= chiudi.top - 2 && pina.textContent.includes('Pina'),
+            stacco: !tocca(timbro, chiudi) && !tocca(pina, chiudi),
+          };
         });
-        expect(dentro).toBe(true);
+        expect(dentro.chiudi, 'chiudi').toBe(true);
+        expect(dentro.timbro, 'timbro').toBe(true);
+        expect(dentro.pina, 'pina').toBe(true);
+        expect(dentro.stacco, 'stacco').toBe(true);
       }
     }
+  });
+
+  test('T16 la zona calda non si disegna senza debug', async ({ page }) => {
+    await prepara(page);
+    const nascosta = async (indice, id) => {
+      await page.evaluate((i) => {
+        localStorage.setItem('la-bottega:salvataggio', JSON.stringify({
+          versione: 2,
+          indice: i,
+          linea: 0,
+          saltato: false,
+          progressoGesto: 0,
+          parziali: [],
+          strumento: null,
+        }));
+      }, indice);
+      await page.reload();
+      await page.waitForSelector('#app[data-pronto="1"]');
+      await page.waitForFunction(() => document.querySelector('#app').dataset.glb === 'torcia');
+      await attendiPasso(page, id);
+      const stato = await page.evaluate(() => {
+        const el = document.querySelector('#zone-debug');
+        const r = el.getBoundingClientRect();
+        return {
+          hidden: el.hidden,
+          attiva: el.classList.contains('attiva'),
+          display: getComputedStyle(el).display,
+          w: r.width,
+          h: r.height,
+        };
+      });
+      expect(stato.hidden, id).toBe(true);
+      expect(stato.attiva, id).toBe(false);
+      expect(stato.display, id).toBe('none');
+      expect(stato.w, id).toBe(0);
+      expect(stato.h, id).toBe(0);
+    };
+    await nascosta(2, 'b4-bottone');
+    const volto = await page.evaluate(async () => {
+      const raw = getComputedStyle(document.querySelector('#medaglione')).backgroundImage;
+      const trovato = raw.match(/url\("?(data:image[^")]+)"?\)/);
+      if (!trovato) return { n: 0 };
+      const img = new Image();
+      img.src = trovato[1];
+      await img.decode();
+      const tela = document.createElement('canvas');
+      tela.width = img.width;
+      tela.height = img.height;
+      const ctx = tela.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const data = ctx.getImageData(0, 0, tela.width, tela.height).data;
+      let n = 0;
+      let sx = 0;
+      let sy = 0;
+      for (let y = 0; y < tela.height; y += 1) {
+        for (let x = 0; x < tela.width; x += 1) {
+          const i = (y * tela.width + x) * 4;
+          const pesca = Math.abs(data[i] - 244) < 22 && Math.abs(data[i + 1] - 210) < 22 && Math.abs(data[i + 2] - 192) < 28;
+          if (!pesca && data[i + 3] > 200) {
+            n += 1;
+            sx += x;
+            sy += y;
+          }
+        }
+      }
+      if (!n) return { n };
+      return { n, x: sx / n / tela.width, y: sy / n / tela.height };
+    });
+    expect(volto.n, 'medaglione').toBeGreaterThan(200);
+    expect(volto.x).toBeGreaterThan(0.32);
+    expect(volto.x).toBeLessThan(0.68);
+    expect(volto.y).toBeGreaterThan(0.32);
+    expect(volto.y).toBeLessThan(0.68);
+    await nascosta(13, 'r3-leva');
+    await page.goto('/la-bottega/?debug=zone&passo=b4-bottone');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#app').dataset.glb === 'torcia');
+    await attendiPasso(page, 'b4-bottone');
+    const accesa = await page.evaluate(() => {
+      const el = document.querySelector('#zone-debug');
+      return el.classList.contains('attiva') && getComputedStyle(el).display === 'block' && !el.hidden;
+    });
+    expect(accesa).toBe(true);
   });
 
   test('T9 dpr, triangoli e disegni restano nel budget', async ({ page }) => {

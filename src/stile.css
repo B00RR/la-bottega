@@ -159,8 +159,13 @@ button { font: inherit; color: inherit; }
 #lista-indizi { list-style: none; margin: 0; padding: 0; }
 #lista-indizi li { display: flex; gap: 8px; padding: 6px 0; font-size: 18px; }
 .segno { width: 18px; display: inline-block; }
-.timbro-pagina { display: none; letter-spacing: 0.14em; color: #c4623a; transform: rotate(-8deg); }
+.timbro-pagina {
+  display: none; flex: none; margin: 0; padding: 12px 8px 4px;
+  text-align: center; font-size: 18px; font-weight: 900; letter-spacing: 0.14em;
+  color: #c4623a; transform: rotate(-6deg); transform-origin: center bottom;
+}
 #taccuino.riparato .timbro-pagina { display: block; }
+.pina { margin: 0; flex: none; font-size: 16px; font-weight: 800; line-height: 1.3; color: #9a5f38; }
 #impostazioni button, #azioni button, #chiudi-taccuino {
   min-height: 44px; border-radius: 12px; border: 2px solid var(--inchiostro); background: #fff;
 }
@@ -187,8 +192,12 @@ button { font: inherit; color: inherit; }
 #maniglia.pronta { animation: hop 0.45s ease; }
 @keyframes hop { 50% { transform: translateY(-8px); } }
 #saracinesca { will-change: transform; }
-#zone-debug { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
-#zone-debug::before {
+#zone-debug { display: none !important; }
+#zone-debug.attiva {
+  display: block !important;
+  position: absolute; inset: 0; pointer-events: none; z-index: 6;
+}
+#zone-debug.attiva::before {
   content: ""; position: absolute; left: 15%; width: 70%;
   top: calc(var(--safe-top) + (100% - var(--safe-top) - var(--safe-bottom)) * 0.32);
   height: calc((100% - var(--safe-top) - var(--safe-bottom)) * 0.36);

@@ -149,7 +149,9 @@ export class Interfaccia {
     }
     this.taccuinoBtn().hidden = !gioco.vista.strumenti.includes('lente');
     this.cassetta.hidden = gioco.vista.strumenti.length === 0;
-    this.zone.hidden = !gioco.debugZone;
+    const zona = Boolean(gioco.debugZone);
+    this.zone.hidden = !zona;
+    this.zone.classList.toggle('attiva', zona);
     if (this.taccuinoTimer > 0) {
       this.taccuinoTimer -= 1;
       if (this.taccuinoTimer === 0) this.taccuino.hidden = true;
@@ -216,15 +218,16 @@ export class Interfaccia {
       voce.append(segno, nome);
       this.lista.append(voce);
     }
-    let pina = this.taccuino.querySelector('.pina');
+    let pina = this.taccuino.querySelector(':scope > .pina');
     if (gioco.vista.fine) {
       if (!pina) {
         pina = document.createElement('p');
         pina.className = 'pina';
-        pina.textContent = t('ui.pina');
-        this.taccuino.querySelector('.pagine').append(pina);
+        this.app.querySelector('#chiudi-taccuino').before(pina);
       }
-    }
+      pina.textContent = t('ui.pina');
+      pina.hidden = false;
+    } else if (pina) pina.hidden = true;
     this.taccuino.classList.toggle('riparato', Boolean(gioco.vista.torcia.accesa));
   }
 
@@ -288,7 +291,7 @@ export class Interfaccia {
 
   /** Rettangoli visibili che si toccano, testo della bolla coperto, Chiudi fuori carta. */
   sovrapposizioni() {
-    const sel = ['#bolla', '#chi-parla', '#ingranaggio', '#cassetta', '#cartoncino', '#taccuino', '#impostazioni', '#azioni', '#continua', '#rigioca', '#chiudi-taccuino', '#cartello'];
+    const sel = ['#bolla', '#chi-parla', '#ingranaggio', '#cassetta', '#cartoncino', '#taccuino', '#impostazioni', '#azioni', '#continua', '#rigioca', '#chiudi-taccuino', '#cartello', '.timbro-pagina', '.pina'];
     const visi = [];
     for (const id of sel) {
       const el = this.app.querySelector(id);

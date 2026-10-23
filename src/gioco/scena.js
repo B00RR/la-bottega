@@ -8,7 +8,8 @@ import { montaTorcia, posaTappo } from './torcia.js';
 const POSE_TORCIA = {
   banco: new THREE.Vector3(0, 0.08, 0.02),
   spinta: new THREE.Vector3(0, 0.08, 0.07),
-  lato: new THREE.Vector3(-0.35, 0.08, -0.3),
+  // Dietro a destra, fuori dai primi piani del telecomando e dal banco.
+  lato: new THREE.Vector3(0.52, 0.08, -0.28),
 };
 
 const APERTURA_GUSCIO = 160 * Math.PI / 180;
@@ -508,7 +509,8 @@ export class Scena {
       this.cassetto.position.set(base.x, base.y, base.z + APERTURA_CASSETTO * aperto);
     } else if ((vista.cassetto || 0) > 0.45) this.ancora(this.cassetto, 0.52, 0.56, 0.62);
     if (!this.vassoio?.userData.sulBanco && (t.pileVecchie || 0) > 0) this.ancora(this.vassoio, 0.28, 0.62, 0.62);
-    if ((vista.tv || 0) > 0) {
+    const dettaglio = this.shot === 'TELECOMANDO' || this.shot === 'TC-RETRO' || this.shot === 'TC-INTERNO';
+    if ((vista.tv || 0) > 0 && !dettaglio) {
       this.ancora(this.tv, 0.62, 0.16, 1.15);
       this.tv.lookAt(this.camera.position);
     }
@@ -535,8 +537,7 @@ export class Scena {
       if (dx) dx.scale.y = 1 - strizza * 0.75;
     }
 
-    this.tv.visible = (vista.tv || 0) > 0;
-    const dettaglio = this.shot === 'TELECOMANDO' || this.shot === 'TC-RETRO' || this.shot === 'TC-INTERNO';
+    this.tv.visible = (vista.tv || 0) > 0 && !dettaglio;
     this.fascio.material.opacity = dettaglio ? 0.15 : 0.35;
     this.fascio.visible = Boolean(t.accesa && this.vetro);
     if (t.accesa && this.vetro) {
@@ -975,8 +976,10 @@ export class Scena {
   }
 
   catturaEttore() {
-    const testa = this.ettore?.getObjectByName?.('testa') || this.ettore?.getObjectByName?.('coppola');
-    if (!testa) {
+    const volto = this.ettore?.getObjectByName?.('occhi')
+      || this.ettore?.getObjectByName?.('testa')
+      || this.ettore?.getObjectByName?.('coppola');
+    if (!volto) {
       console.warn('ritratto: osso della testa assente');
       return '';
     }
@@ -988,11 +991,14 @@ export class Scena {
     const buf = new Uint8Array(120 * 120 * 4);
     try {
       this.ettore.updateWorldMatrix(true, true);
-      const cam = new THREE.PerspectiveCamera(22, 1, 0.05, 4);
+      const cam = new THREE.PerspectiveCamera(26, 1, 0.04, 4);
       const centro = new THREE.Vector3();
-      testa.getWorldPosition(centro);
-      centro.y += 0.04;
-      cam.position.copy(centro).add(new THREE.Vector3(0.18, 0.06, 0.32));
+      volto.getWorldPosition(centro);
+      centro.y -= 0.02;
+      const avanti = new THREE.Vector3(0, 0, 1).applyQuaternion(this.ettore.quaternion);
+      const destra = new THREE.Vector3(-1, 0, 0).applyQuaternion(this.ettore.quaternion);
+      cam.position.copy(centro).addScaledVector(avanti, 0.4).addScaledVector(destra, 0.12);
+      cam.position.y += 0.015;
       cam.lookAt(centro);
       cam.updateProjectionMatrix();
       altri.forEach((n) => { n.visible = false; });
