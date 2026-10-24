@@ -56,7 +56,13 @@ export class Interfaccia {
     });
     appEvita(this.app.querySelector('#salta'), () => gioco.salta());
     appEvita(this.app.querySelector('#taccuino-btn'), () => this.alternaTaccuino());
-    appEvita(this.app.querySelector('#chiudi-taccuino'), () => { this.taccuino.hidden = true; });
+    appEvita(this.app.querySelector('#chiudi-taccuino'), () => {
+      if (gioco.faseFine === 'taccuino') {
+        gioco.chiudiFinale();
+        return;
+      }
+      this.taccuino.hidden = true;
+    });
     appEvita(this.app.querySelector('#continua'), () => { this.azioni.dataset.domani = '1'; });
     appEvita(this.app.querySelector('#rigioca'), () => gioco.ricomincia());
     this.mano.addEventListener('animationend', () => {
@@ -120,7 +126,9 @@ export class Interfaccia {
 
   segui(gioco) {
     const testo = gioco.bolla ? gioco.bolla.testo.slice(0, Math.ceil(gioco.bolla.caratteri)) : '';
-    this.bollaEl.hidden = !gioco.bolla;
+    const serranda = gioco.faseFine === 'serranda';
+    this.bollaEl.hidden = serranda || !gioco.bolla;
+    this.app.querySelector('#chi-parla').hidden = serranda;
     this.rigaEl.textContent = testo;
     this.disegnaAttrezzi(gioco);
     this.disegnaIndizi(gioco);
@@ -253,7 +261,7 @@ export class Interfaccia {
 
   apriPina() {
     this.taccuino.hidden = false;
-    this.taccuino.classList.add('riparato');
+    this.taccuino.classList.add('riparato', 'finale');
     this.taccuinoTimer = 0;
     this.firmaIndizi = '';
     this.disegnaIndizi(this.gioco);
@@ -273,10 +281,12 @@ export class Interfaccia {
     this.impostazioni.hidden = true;
   }
 
-  fine(visibile) {
-    this.azioni.hidden = !visibile;
-    this.cassetta.classList.toggle('via', visibile);
-    this.app.classList.toggle('fine', visibile);
+  fine(fase) {
+    const attivo = fase === 'taccuino' || fase === 'serranda';
+    this.app.classList.toggle('fine', attivo);
+    this.app.classList.toggle('serranda', fase === 'serranda');
+    this.cassetta.classList.toggle('via', attivo);
+    this.azioni.hidden = fase !== 'serranda';
   }
 
   paesaggio(attivo) {

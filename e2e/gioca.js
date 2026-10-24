@@ -353,13 +353,13 @@ export async function giocaTutorial(page, { mouse, prefisso }) {
   await page.waitForTimeout(500);
   await shot(page, `${prefisso}-tv`);
   await attendiPasso(page, 'chiusura');
-  await page.waitForFunction(() => document.querySelector('#cartello')?.textContent === 'Domani');
+  await expectPina(page);
+  await page.locator('#chiudi-taccuino').click();
   await page.waitForFunction(() => {
     const n = document.querySelector('#cartello');
     const r = n.getBoundingClientRect();
-    return r.height > 8 && r.top >= 0 && r.bottom <= window.innerHeight;
+    return n?.textContent === 'Domani' && r.height > 8 && r.top >= 0 && r.bottom <= window.innerHeight;
   });
-  await expectPina(page);
   await shot(page, `${prefisso}-domani`);
   const testo = await page.locator('body').innerText();
   if (testo.includes('Fine del tutorial')) throw new Error('compare Fine del tutorial');

@@ -299,7 +299,8 @@ export class Gioco {
     }
     if (this.passo.tipo === 'fine') {
       this.apertura = 1;
-      this.ui.fine(true);
+      this.faseFine = 'taccuino';
+      this.ui.fine('taccuino');
     }
     if (this.passo.gesto === 'cerchio') this.scena.aggiornaAnello(this.progressoGesto, this.progressoGesto > 0.02);
   }
@@ -345,7 +346,7 @@ export class Gioco {
         this.apertura = Math.min(1, this.apertura + parete * 1.35);
         if (this.apertura >= 1 && this.torciaPronta) this.completaShutter();
       }
-    } else if (this.passo.tipo === 'fine' && this.apertura > 0.5) {
+    } else if (this.passo.tipo === 'fine' && this.faseFine === 'serranda' && this.apertura > 0.5) {
       this.apertura = Math.max(0.5, this.apertura - parete * 0.45);
     }
     this.ui.saracinesca(this.apertura, this.torciaPronta);
@@ -393,8 +394,9 @@ export class Gioco {
       this.fermo = this.scena.cameraFerma() && this.scena.oggettiFermi();
       if (this.fermo && !this.intro) {
         this.intro = true;
+        this.faseFine = 'taccuino';
         if (this.passo.righe?.length) this.accoda(this.passo.righe);
-        this.ui.fine(true);
+        this.ui.fine('taccuino');
         this.ui.apriPina();
       }
       if (this.intro && !this.bolla && this.coda.length === 0 && !this.fine2) {
@@ -994,10 +996,22 @@ export class Gioco {
     this.parziali = [];
     this.coda = [];
     this.bolla = null;
-    this.apertura = 0.5;
+    this.apertura = 1;
+    this.faseFine = 'taccuino';
     this.memorizza();
     this.preparaPasso(false);
     this.ui.chiudiImpostazioni();
+  }
+
+  /** Il taccuino si chiude e la saracinesca scende: un solo bottone primario. */
+  chiudiFinale() {
+    if (this.faseFine === 'serranda') return;
+    this.faseFine = 'serranda';
+    this.bolla = null;
+    this.coda = [];
+    this.app.dataset.bolla = '';
+    this.ui.taccuino.hidden = true;
+    this.ui.fine('serranda');
   }
 
   ricomincia() {
@@ -1049,6 +1063,7 @@ export class Gioco {
     app.dataset.stato = this.fermo ? 'attivo' : 'entra';
     app.dataset.bolla = this.bolla?.testo || '';
     app.dataset.fine = this.vista.fine ? '1' : '0';
+    app.dataset.fase = this.faseFine || '';
     app.dataset.aiuto = String(this.aiuto);
     app.dataset.esitazione = String(Math.round(this.esitazione * 1000) / 1000);
     app.dataset.ta1 = this.aiutoTempi.a1 != null ? String(this.aiutoTempi.a1) : '';

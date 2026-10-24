@@ -154,7 +154,7 @@ button { font: inherit; color: inherit; }
   bottom: calc(var(--safe-bottom) + 144px);
   overflow: hidden;
 }
-#taccuino[hidden], #impostazioni[hidden], #azioni[hidden], #paesaggio[hidden], #bolla[hidden], #saracinesca.aperta, #cartoncino[hidden] { display: none; }
+#taccuino[hidden], #impostazioni[hidden], #azioni[hidden], #paesaggio[hidden], #bolla[hidden], #chi-parla[hidden], #saracinesca.aperta, #cartoncino[hidden] { display: none; }
 .pagine { min-height: 0; flex: 1; overflow: auto; background: #f4efe4; border-radius: 12px; padding: 12px; }
 #lista-indizi { list-style: none; margin: 0; padding: 0; }
 #lista-indizi li { display: flex; gap: 8px; padding: 6px 0; font-size: 18px; }
@@ -170,7 +170,18 @@ button { font: inherit; color: inherit; }
   min-height: 44px; border-radius: 12px; border: 2px solid var(--inchiostro); background: #fff;
 }
 #chiudi-taccuino { flex: none; align-self: flex-start; }
-#app.fine #bolla, #app.fine #chi-parla { z-index: 32; }
+#taccuino.finale {
+  top: 28%;
+  bottom: calc(var(--safe-bottom) + 24px);
+}
+#taccuino.finale #chiudi-taccuino {
+  align-self: center; width: min(300px, 88%); height: 52px;
+  background: #fff6ea; border: 0; box-shadow: 0 3px 0 #e2b79e;
+}
+#app.fine #cassetta,
+#app.serranda #maniglia,
+#app.serranda #bolla,
+#app.serranda #chi-parla { display: none !important; }
 #salta { margin-top: 12px; opacity: 0.8; }
 #timbro { margin: 0; font-size: 12px; opacity: 0.6; }
 #azioni {
@@ -180,6 +191,12 @@ button { font: inherit; color: inherit; }
 #azioni button {
   width: min(300px, 88vw); height: 52px; flex: none; background: #fff6ea;
   border: 0; box-shadow: 0 3px 0 #e2b79e; font-weight: 800;
+}
+#azioni .secondario {
+  width: auto; height: auto; min-height: 0; padding: 6px 8px;
+  background: transparent; border: 0; box-shadow: none;
+  font-size: 14px; font-weight: 800; text-decoration: underline; text-underline-offset: 3px;
+  color: #9a5f38;
 }
 #paesaggio {
   position: absolute; inset: 0; z-index: 50; background: #f4d2c0ee;

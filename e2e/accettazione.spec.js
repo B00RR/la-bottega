@@ -184,11 +184,11 @@ test.describe('accettazione', () => {
       if (id === 'b4-bottone') await expect(page.locator('#cartoncino')).toBeHidden();
       if (id === 'chiusura') {
         await page.waitForFunction(() => {
-          const n = document.querySelector('#cartello');
-          const r = n.getBoundingClientRect();
-          return n.textContent === 'Domani' && r.height > 8 && r.top >= 0 && r.bottom <= window.innerHeight;
+          const taccuino = document.querySelector('#taccuino');
+          const pina = document.querySelector('#taccuino .pina');
+          return taccuino && !taccuino.hidden && pina && !pina.hidden && pina.textContent.includes('Pina');
         });
-        await page.waitForTimeout(900);
+        await page.waitForTimeout(400);
         const quadro = await page.locator('#app').getAttribute('data-quadro');
         expect(quadro, id).toBe('');
         const dentro = await page.evaluate(() => {
@@ -307,6 +307,82 @@ test.describe('accettazione', () => {
     expect(accesa).toBe(true);
   });
 
+  test('T17 in chiusura c’è al massimo un bottone primario', async ({ page }) => {
+    const primari = () => page.evaluate(() => {
+      const visibile = (el) => {
+        if (!el || el.hidden) return false;
+        for (let n = el; n; n = n.parentElement) {
+          const s = getComputedStyle(n);
+          if (s.display === 'none' || s.visibility === 'hidden') return false;
+        }
+        const r = el.getBoundingClientRect();
+        return r.width > 2 && r.height > 2 && r.bottom > 2 && r.top < window.innerHeight - 2;
+      };
+      return [...document.querySelectorAll('[data-primario]')].filter(visibile).map((el) => el.id);
+    });
+    await prepara(page, '?debug=zone&passo=chiusura');
+    await attendiPasso(page, 'chiusura');
+    await page.waitForFunction(() => !document.querySelector('#taccuino').hidden);
+    expect(await primari()).toEqual(['chiudi-taccuino']);
+    await expect(page.locator('#continua')).toBeHidden();
+    await expect(page.locator('#rigioca')).toBeHidden();
+    const sopra = await page.evaluate(() => {
+      const bolla = document.querySelector('#bolla');
+      const sara = document.querySelector('#saracinesca');
+      if (!bolla || bolla.hidden || getComputedStyle(bolla).display === 'none') return false;
+      if (getComputedStyle(sara).display === 'none') return false;
+      const b = bolla.getBoundingClientRect();
+      const s = sara.getBoundingClientRect();
+      const x = Math.min(b.right, s.right) - Math.max(b.left, s.left);
+      const y = Math.min(b.bottom, s.bottom) - Math.max(b.top, s.top);
+      return x > 0 && y > 0;
+    });
+    expect(sopra).toBe(false);
+    await page.locator('#chiudi-taccuino').click();
+    const storia = await page.evaluate(async () => {
+      const visibile = (el) => {
+        if (!el || el.hidden) return false;
+        for (let n = el; n; n = n.parentElement) {
+          const s = getComputedStyle(n);
+          if (s.display === 'none' || s.visibility === 'hidden') return false;
+        }
+        const r = el.getBoundingClientRect();
+        return r.width > 2 && r.height > 2 && r.bottom > 2 && r.top < window.innerHeight - 2;
+      };
+      const conti = [];
+      const t0 = performance.now();
+      while (performance.now() - t0 < 1400) {
+        conti.push([...document.querySelectorAll('[data-primario]')].filter(visibile).length);
+        await new Promise((ok) => requestAnimationFrame(ok));
+      }
+      return conti;
+    });
+    expect(Math.max(...storia)).toBeLessThanOrEqual(1);
+    await page.waitForFunction(() => {
+      const n = document.querySelector('#cartello');
+      const r = n.getBoundingClientRect();
+      return n.textContent === 'Domani' && r.height > 8 && r.top >= 0 && r.bottom <= window.innerHeight
+        && document.querySelector('#app').dataset.fase === 'serranda';
+    });
+    expect(await primari()).toEqual(['continua']);
+    await expect(page.locator('#rigioca')).toBeVisible();
+    await expect(page.locator('#maniglia')).toBeHidden();
+    const dopo = await page.evaluate(() => {
+      const bolla = document.querySelector('#bolla');
+      const sara = document.querySelector('#saracinesca');
+      const s = getComputedStyle(bolla);
+      if (bolla.hidden || s.display === 'none') return false;
+      const b = bolla.getBoundingClientRect();
+      const t = sara.getBoundingClientRect();
+      const x = Math.min(b.right, t.right) - Math.max(b.left, t.left);
+      const y = Math.min(b.bottom, t.bottom) - Math.max(b.top, t.top);
+      return x > 0 && y > 0;
+    });
+    expect(dopo).toBe(false);
+    const quadro = await page.locator('#app').getAttribute('data-quadro');
+    expect(quadro).toBe('');
+  });
+
   test('T9 dpr, triangoli e disegni restano nel budget', async ({ page }) => {
     await prepara(page);
     const box = page.viewportSize();
@@ -408,6 +484,7 @@ test('attrezzo e verso sbagliati non avanzano, e Rigioca riparte', async ({ page
   await page.waitForSelector('#app[data-pronto="1"]');
   await page.waitForFunction(() => document.querySelector('#app').dataset.glb === 'torcia');
   await page.waitForFunction(() => document.querySelector('#app').dataset.passo === 'chiusura');
+  await page.locator('#chiudi-taccuino').click();
   await expect(page.locator('#rigioca')).toBeVisible();
   await page.locator('#rigioca').click();
   await page.waitForSelector('#saracinesca', { state: 'attached' });
