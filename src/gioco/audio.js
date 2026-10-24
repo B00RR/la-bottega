@@ -19,20 +19,29 @@ export class AudioBottega {
   }
 
   sblocca() {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    if (!this.ctx) {
-      this.ctx = new AC();
-      this.master = this.ctx.createGain();
-      this.master.connect(this.ctx.destination);
-      this.musica = this.bus(-18);
-      this.sfx = this.bus(-4);
-      this.voce = this.bus(-6);
-      this.ambiente = this.bus(-16);
-      this.guadagnoBase = -18;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!this.ctx || this.ctx.state === 'closed') {
+        this.ctx = new AC();
+        this.master = this.ctx.createGain();
+        this.master.connect(this.ctx.destination);
+        this.musica = this.bus(-18);
+        this.sfx = this.bus(-4);
+        this.voce = this.bus(-6);
+        this.ambiente = this.bus(-16);
+        this.guadagnoBase = -18;
+      }
+      if (this.ctx.state === 'suspended') {
+        const ripresa = this.ctx.resume();
+        if (ripresa && typeof ripresa.catch === 'function') ripresa.catch(() => {});
+      }
+      this.applicaMuto();
+    } catch (errore) {
+      console.error(errore);
+      this.ctx = null;
+      this.master = null;
     }
-    if (this.ctx.state === 'suspended') this.ctx.resume();
-    this.applicaMuto();
   }
 
   bus(decibel) {
@@ -78,6 +87,7 @@ export class AudioBottega {
 
   beep(bus, freq, dur, tipo, gain, quando = 0) {
     if (this.muto || !this.ctx || !bus) return;
+    try {
     const t0 = this.ctx.currentTime + quando;
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
@@ -89,10 +99,14 @@ export class AudioBottega {
     g.connect(bus);
     osc.start(t0);
     osc.stop(t0 + dur + 0.03);
+    } catch (errore) {
+      console.error(errore);
+    }
   }
 
   rumore(bus, dur, gain, freq = 800) {
     if (this.muto || !this.ctx || !bus) return;
+    try {
     const n = Math.max(1, Math.floor(this.ctx.sampleRate * dur));
     const buffer = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
     const dati = buffer.getChannelData(0);
@@ -110,6 +124,9 @@ export class AudioBottega {
     g.connect(bus);
     src.start();
     src.stop(this.ctx.currentTime + dur + 0.02);
+    } catch (errore) {
+      console.error(errore);
+    }
   }
 
   /** Un blip ogni due caratteri, tono basso ±6%. La musica scende di 6 dB. */

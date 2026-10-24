@@ -14,7 +14,6 @@ export default defineConfig({
     trace: 'off',
     video: 'off',
     screenshot: 'only-on-failure',
-    launchOptions: { args: gl },
   },
   webServer: {
     command: 'npm run build && npm run preview -- --host 127.0.0.1 --port 4173 --strictPort',
@@ -31,6 +30,20 @@ export default defineConfig({
         isMobile: true,
         deviceScaleFactor: 1,
         userAgent: devices['Pixel 7'].userAgent,
+        serviceWorkers: 'block',
+        launchOptions: { args: gl },
+      },
+    },
+    {
+      name: 'webkit-telefono',
+      use: {
+        browserName: 'webkit',
+        viewport: { width: 390, height: 844 },
+        hasTouch: true,
+        isMobile: true,
+        deviceScaleFactor: 1,
+        userAgent: devices['iPhone 13'].userAgent,
+        serviceWorkers: 'block',
       },
     },
     {
@@ -39,6 +52,7 @@ export default defineConfig({
         viewport: { width: 1280, height: 800 },
         hasTouch: false,
         isMobile: false,
+        launchOptions: { args: gl },
       },
     },
   ],

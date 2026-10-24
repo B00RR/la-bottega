@@ -106,6 +106,7 @@ export class Gioco {
     this.scena._onRitratto = (url) => this.ui.ritratto?.(url);
     this.scena.prontaGlb.then(() => {
       this.torciaPronta = true;
+      this.ui.alzaPronta();
       this.ui.ritratto?.(this.scena.ritratto);
       this.applicaProgresso();
       if (this.passo.tipo !== 'saracinesca') this.preparaPasso(this.progressoGesto > 0.02 || this.parziali.length > 0);
@@ -138,77 +139,90 @@ export class Gioco {
   puntatoreGiu(e) {
     if (this.pausa || this.ignoraPunto(e)) return;
     if (e.isPrimary === false) return;
-    this.audio.sblocca();
-    const x = e.clientX;
-    const y = e.clientY;
-    if (this.bolla && this.ui.sopraBolla(x, y) && !(this.passo.tipo === 'gesto' && this.sulBersaglio(x, y))) {
-      this.toccaBolla();
-      return;
+    try {
+      const x = e.clientX;
+      const y = e.clientY;
+      if (this.bolla && this.ui.sopraBolla(x, y) && !(this.passo.tipo === 'gesto' && this.sulBersaglio(x, y))) {
+        this.toccaBolla();
+        return;
+      }
+      this.premuto = true;
+      this.down = { x, y, t: Number.isFinite(e.timeStamp) ? e.timeStamp : ora() };
+      this.ultimo = { x, y };
+      this.gestoAmmesso = false;
+      this.erroreSensoGesto = 0;
+      this.sensoSegnato = false;
+      this.dettoSenso = false;
+      if (this.passo.tipo === 'saracinesca' && this.apertura < 1) {
+        this.shDown = { x, y, t: Number.isFinite(e.timeStamp) ? e.timeStamp : ora() };
+        return;
+      }
+      if (!this.fermo || this.celebrando > 0) {
+        this.attesa = { x, y, t: ora() };
+        this.codaPunti = [];
+        return;
+      }
+      this.inizia(x, y);
+    } catch (errore) {
+      console.error(errore);
+    } finally {
+      try { this.audio.sblocca(); } catch (errore) { console.error(errore); }
     }
-    this.premuto = true;
-    this.down = { x, y, t: Number.isFinite(e.timeStamp) ? e.timeStamp : ora() };
-    this.ultimo = { x, y };
-    this.gestoAmmesso = false;
-    this.erroreSensoGesto = 0;
-    this.sensoSegnato = false;
-    this.dettoSenso = false;
-    if (this.passo.tipo === 'saracinesca' && this.apertura < 1) {
-      this.shDown = { x, y, t: Number.isFinite(e.timeStamp) ? e.timeStamp : ora() };
-      return;
-    }
-    if (!this.fermo || this.celebrando > 0) {
-      this.attesa = { x, y, t: ora() };
-      this.codaPunti = [];
-      return;
-    }
-    this.inizia(x, y);
   }
 
   puntatoreMuovi(e) {
     if (!this.premuto || this.pausa) return;
-    const x = e.clientX;
-    const y = e.clientY;
-    if (this.shDown && this.apertura < 1 && !this.shutterAuto) {
-      const h = window.innerHeight || 1;
-      const salita = (this.shDown.y - y) / (h * 0.55);
-      this.apertura = Math.max(0, Math.min(1, salita));
-      if (this.apertura >= 0.4) this.chiudiSaracinesca();
-      return;
+    try {
+      const x = e.clientX;
+      const y = e.clientY;
+      if (this.shDown && this.apertura < 1 && !this.shutterAuto) {
+        const h = window.innerHeight || 1;
+        const salita = (this.shDown.y - y) / (h * 0.55);
+        this.apertura = Math.max(0, Math.min(1, salita));
+        if (this.apertura >= 0.4) this.chiudiSaracinesca();
+        return;
+      }
+      if (this.attesa) {
+        this.codaPunti.push({ x, y });
+        return;
+      }
+      if (this.ignora || !this.fermo) return;
+      this.muovi(x, y);
+      this.ultimo = { x, y };
+    } catch (errore) {
+      console.error(errore);
     }
-    if (this.attesa) {
-      this.codaPunti.push({ x, y });
-      return;
-    }
-    if (this.ignora || !this.fermo) return;
-    this.muovi(x, y);
-    this.ultimo = { x, y };
   }
 
   puntatoreSu(e) {
     if (!this.premuto) return;
-    const x = e.clientX;
-    const y = e.clientY;
-    const segno = Number.isFinite(e.timeStamp) ? e.timeStamp : ora();
     this.premuto = false;
-    if (this.shDown && !this.shutterAuto && this.passo.tipo === 'saracinesca') {
-      const dt = segno - this.shDown.t;
-      const dist = Math.hypot(x - this.shDown.x, y - this.shDown.y);
-      // Un dito fermo apre anche se il fotogramma arriva in ritardo: non è un bottone.
-      if (eTap(dt, dist) || dist <= gesti.tap.px || this.apertura >= 0.4) this.chiudiSaracinesca();
-      this.shDown = null;
-    }
-    if (this.attesa) {
-      this.codaPunti.push({ x, y });
-      this.rilascioInAttesa = { x, y, t: segno };
-      return;
-    }
-    if (this.ignora) {
-      this.ignora = false;
+    try {
+      const x = e.clientX;
+      const y = e.clientY;
+      const segno = Number.isFinite(e.timeStamp) ? e.timeStamp : ora();
+      if (this.shDown && !this.shutterAuto && this.passo.tipo === 'saracinesca') {
+        const dt = segno - this.shDown.t;
+        const dist = Math.hypot(x - this.shDown.x, y - this.shDown.y);
+        // Un dito fermo apre anche se il fotogramma arriva in ritardo: non è un bottone.
+        if (eTap(dt, dist) || dist <= gesti.tap.px || this.apertura >= 0.4) this.chiudiSaracinesca();
+        this.shDown = null;
+      }
+      if (this.attesa) {
+        this.codaPunti.push({ x, y });
+        this.rilascioInAttesa = { x, y, t: segno };
+        return;
+      }
+      if (this.ignora) {
+        this.ignora = false;
+        this.memorizza();
+        return;
+      }
+      this.rilascia(x, y, segno);
       this.memorizza();
-      return;
+    } catch (errore) {
+      console.error(errore);
     }
-    this.rilascia(x, y, segno);
-    this.memorizza();
   }
 
   scaricaCoda() {
@@ -228,9 +242,15 @@ export class Gioco {
   chiudiSaracinesca() {
     if (this.shutterAuto) return;
     this.shutterAuto = true;
-    this.audio.sblocca();
-    this.audio.sferraglia();
-    window.setTimeout(() => this.audio.campanello(), 160);
+    try {
+      this.audio.sblocca();
+      this.audio.sferraglia();
+      window.setTimeout(() => {
+        try { this.audio.campanello(); } catch (errore) { console.error(errore); }
+      }, 160);
+    } catch (errore) {
+      console.error(errore);
+    }
   }
 
   completaShutter() {
@@ -341,11 +361,13 @@ export class Gioco {
     const parete = Math.max(this.dtParete || 0, muro, vivo);
     if (this.passo.tipo === 'saracinesca') {
       this.shutterT += parete;
-      this.ui.gesso(this.shutterT > 2.5 && !this.shutterAuto);
+      const alza = this.ui.maniglia.dataset.stato === 'pronta';
+      this.ui.gesso(this.shutterT > 2.5 && !this.shutterAuto && alza);
       if (this.shutterAuto && this.apertura < 1) {
         this.apertura = Math.min(1, this.apertura + parete * 1.35);
-        if (this.apertura >= 1 && this.torciaPronta) this.completaShutter();
       }
+      // Può arrivare in cima prima dei modelli: l'ingresso si completa al frame dopo.
+      if (this.shutterAuto && this.apertura >= 1 && this.torciaPronta) this.completaShutter();
     } else if (this.passo.tipo === 'fine' && this.faseFine === 'serranda' && this.apertura > 0.5) {
       this.apertura = Math.max(0.5, this.apertura - parete * 0.45);
     }

@@ -61,6 +61,8 @@
         display: flex; align-items: center; justify-content: center;
         font: 800 18px Nunito, "Trebuchet MS", sans-serif; color: #3c291c;
       }
+      #maniglia[data-stato="carica"] { pointer-events: none; animation: maniglia-carica 1s ease-in-out infinite; }
+      @keyframes maniglia-carica { 50% { opacity: 0.4; } }
       #gesso { position: absolute; bottom: 22%; margin: 0; line-height: 0; }
     </style>
   </head>
@@ -76,7 +78,7 @@
             <path d="M24 58 V12 M24 12 L12 26 M24 12 L36 26" fill="none" stroke="#fff6ea" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </p>
-        <div id="maniglia" data-primario>Alza</div>
+        <div id="maniglia" data-primario data-stato="carica" aria-busy="true">…</div>
       </div>
       <div id="chi-parla">
         <div id="medaglione" aria-hidden="true"></div>

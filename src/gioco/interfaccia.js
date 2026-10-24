@@ -83,6 +83,14 @@ export class Interfaccia {
     if (bottom) document.documentElement.style.setProperty('--safe-bottom', `${bottom}px`);
   }
 
+  /** «Alza» compare solo dopo che il gesto è già in ascolto e i modelli sono pronti. */
+  alzaPronta() {
+    if (this.maniglia.dataset.stato === 'pronta') return;
+    this.maniglia.dataset.stato = 'pronta';
+    this.maniglia.removeAttribute('aria-busy');
+    this.maniglia.textContent = 'Alza';
+  }
+
   saracinesca(apertura, pronta) {
     this.saracinescaEl.style.transform = `translateY(${-105 * apertura}%)`;
     this.saracinescaEl.classList.toggle('aperta', apertura >= 0.98);
