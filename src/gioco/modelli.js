@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { gltfEntro, registraCarico } from './carico.js';
 
 /**
  * I GLB stanno in public/modelli/, nomi snake_case.
@@ -284,7 +284,7 @@ export function clonaMateriale(mesh) {
 
 async function caricaGlb(nome) {
   const url = `${import.meta.env.BASE_URL}modelli/${nome}.glb`;
-  const gltf = await new GLTFLoader().loadAsync(url);
+  const gltf = await gltfEntro(url);
   return gltf.scene;
 }
 
@@ -389,7 +389,12 @@ async function caricaTelecomando() {
 
 async function caricaAttrezzi(banco) {
   for (const [id, file] of Object.entries(FILE_ATTREZZO)) {
-    const radice = await caricaGlb(file);
+    let radice;
+    try {
+      radice = await caricaGlb(file);
+    } catch {
+      continue;
+    }
     radice.name = `attrezzo_${id}`;
     const [x, z] = POSA_ATTREZZO[id];
     radice.position.set(x, 0.02, z);
@@ -403,13 +408,15 @@ async function caricaAttrezzi(banco) {
 
 /** Ettore v2: una SkinnedMesh. Null se il file o un osso di PARTI manca. */
 export async function caricaEttore() {
+  const url = `${import.meta.env.BASE_URL}modelli/ettore.glb`;
   try {
-    const url = `${import.meta.env.BASE_URL}modelli/ettore.glb`;
-    const gltf = await new GLTFLoader().loadAsync(url);
+    const gltf = await gltfEntro(url);
     const ettore = gltf.scene.getObjectByName('ettore');
-    if (!ettore) return null;
-    const mancanti = PARTI.ettore.filter((nome) => !ettore.getObjectByName(nome));
-    if (mancanti.length) return null;
+    const mancanti = ettore ? PARTI.ettore.filter((nome) => !ettore.getObjectByName(nome)) : ['ettore'];
+    if (!ettore || mancanti.length) {
+      registraCarico('ettore nodi', 'fallito', 0);
+      return null;
+    }
     const mesh = ettore.getObjectByName('ettore_mesh');
     if (mesh) {
       mesh.frustumCulled = false;

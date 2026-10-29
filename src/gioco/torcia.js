@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { gltfEntro, registraCarico } from './carico.js';
 import { pittura } from './modelli.js';
 
 /** Nodi del GLB approvato. Il tappo ha il pivot in (0, 0.03, 0) e si svita su Y. */
@@ -198,12 +198,13 @@ export async function montaTorcia(modello) {
   const url = `${import.meta.env.BASE_URL}modelli/torcia.glb`;
   let glb = false;
   try {
-    const gltf = await new GLTFLoader().loadAsync(url);
+    const gltf = await gltfEntro(url);
     const radice = gltf.scene;
     radice.position.y = -CENTRO_Y;
     modello.add(radice);
     glb = NODI_TORCIA.every((nome) => radice.getObjectByName(nome));
     if (!glb) {
+      registraCarico('torcia nodi', 'fallito', 0);
       modello.remove(radice);
       modello.add(procedurale());
       modello.children[0].position.y = -CENTRO_Y;

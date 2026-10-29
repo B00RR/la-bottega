@@ -62,7 +62,20 @@
         font: 800 18px Nunito, "Trebuchet MS", sans-serif; color: #3c291c;
       }
       #maniglia[data-stato="carica"] { pointer-events: none; animation: maniglia-carica 1s ease-in-out infinite; }
+      #maniglia[data-stato="errore"] { display: none; }
       @keyframes maniglia-carica { 50% { opacity: 0.4; } }
+      #errore-webgl {
+        position: absolute; z-index: 80; left: 24px; right: 24px; top: 34%;
+        margin: 0; padding: 16px 18px; background: #fff6ea; color: #3c291c;
+        border-radius: 14px; text-align: center;
+        font: 800 18px/1.35 Nunito, "Trebuchet MS", sans-serif;
+      }
+      #debug-carico {
+        position: absolute; z-index: 70; left: 8px; right: 48px;
+        top: calc(var(--safe-top) + 8px); margin: 0; padding: 6px 8px;
+        white-space: pre-wrap; background: #3c291cee; color: #fff6ea;
+        pointer-events: none; font: 700 11px/1.35 Nunito, sans-serif;
+      }
       #gesso { position: absolute; bottom: 22%; margin: 0; line-height: 0; }
     </style>
   </head>

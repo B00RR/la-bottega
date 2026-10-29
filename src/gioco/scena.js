@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { clona } from './mondo.js';
+import { limitaTexture } from './carico.js';
 import { caricaEttore, caricaSet, clonaMateriale, creaBottega, creaEttore, creaTelecomando, indicizza, pittura, sistemaEttore } from './modelli.js';
 import { creaPedana, RegiaEttore } from './ettore.js';
 import { montaTorcia, posaTappo } from './torcia.js';
@@ -43,9 +44,12 @@ function smussa(attuale, meta, dt, k) {
 export class Scena {
   constructor(canvas) {
     this.canvas = canvas;
+    const dito = (navigator.maxTouchPoints || 0) > 0
+      || (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches);
+    this._antialias = !dito;
     this.renderer = new THREE.WebGLRenderer({
       canvas,
-      antialias: true,
+      antialias: this._antialias,
       alpha: false,
       powerPreference: 'high-performance',
       stencil: false,
@@ -59,6 +63,12 @@ export class Scena {
     this.renderer.shadowMap.autoUpdate = false;
     this.renderer.shadowMap.needsUpdate = true;
     this.dprMassimo = Math.min(window.devicePixelRatio || 1, 1.5);
+    const gl = this.renderer.getContext();
+    const infoGpu = gl.getExtension('WEBGL_debug_renderer_info');
+    const gpu = infoGpu ? gl.getParameter(infoGpu.UNMASKED_RENDERER_WEBGL) : '';
+    const maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 0;
+    this.tettoTexture = Math.min(2048, maxTex || 2048);
+    this.scheda = `gpu ${gpu || 'n/d'} · dpr ${window.devicePixelRatio || 1}→${this.dprMassimo} · maxTex ${maxTex} · aa ${this._antialias ? 'sì' : 'no'}`;
     this.dpr = this.dprMassimo;
     this.tempi = [];
     this.buoni = 0;
@@ -159,11 +169,16 @@ export class Scena {
   }
 
   async montaTutto() {
+    let info = { glb: false, nodi: [] };
     try {
-      const info = await montaTorcia(this.modelloTorcia);
+      const [torcia, set, personaggio] = await Promise.all([
+        montaTorcia(this.modelloTorcia),
+        caricaSet(),
+        caricaEttore(),
+      ]);
+      info = torcia;
       this.glb = info.glb;
       this.nodiTorcia = info.nodi;
-      const set = await caricaSet();
       if (set.banco) {
         this.scene.remove(this.cassetto);
         this.scene.remove(this.vassoio);
@@ -176,7 +191,6 @@ export class Scena {
         this.telecomando = set.telecomando;
         this.scene.add(this.telecomando);
       }
-      const personaggio = await caricaEttore();
       if (personaggio) {
         this.scene.remove(this.ettore);
         this.ettore = personaggio.ettore;
@@ -187,15 +201,17 @@ export class Scena {
         this.pedana = creaPedana(this.ettore);
         this.scene.add(this.pedana);
       }
-      this.reindicizza();
-      this.preparaOmbre();
-      this.ritratto = this.catturaEttore();
-      return info;
-    } catch {
-      this.reindicizza();
-      this.preparaOmbre();
-      return { glb: false, nodi: [] };
+      limitaTexture(this.scene, this.tettoTexture);
+    } catch (errore) {
+      console.error(errore);
     }
+    try {
+      this.reindicizza();
+      this.preparaOmbre();
+    } catch (errore) {
+      console.error(errore);
+    }
+    return info;
   }
 
   preparaOmbre() {

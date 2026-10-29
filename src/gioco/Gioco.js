@@ -12,6 +12,7 @@ import {
   statoStrofina,
   vicinoAngolo,
 } from './gestoPuro.js';
+import { avviaFont, registraScheda } from './carico.js';
 import { vibra } from './vibra.js';
 
 const NOMI = [
@@ -104,14 +105,15 @@ export class Gioco {
     this.ui.safe(this.parametri.get('safeTop'), this.parametri.get('safeBottom'));
     if (this.debugCorr) this.coda.push('corr.1', 'corr.2', 'corr.3', 'corr.nuda', 'corr.calma');
     this.scena._onRitratto = (url) => this.ui.ritratto?.(url);
-    this.scena.prontaGlb.then(() => {
-      this.torciaPronta = true;
-      this.ui.alzaPronta();
-      this.ui.ritratto?.(this.scena.ritratto);
-      this.applicaProgresso();
-      if (this.passo.tipo !== 'saracinesca') this.preparaPasso(this.progressoGesto > 0.02 || this.parziali.length > 0);
-      this.pubblica();
+    registraScheda(this.scena.scheda);
+    avviaFont();
+    this._alza = false;
+    this._scadenzaAlza = performance.now() + 6000;
+    this.scena.prontaGlb.then(() => this.modelliArrivati()).catch((errore) => {
+      console.error(errore);
+      this.sbloccaAlza('scena');
     });
+    window.setTimeout(() => this.sbloccaAlza('tempo 6 s'), 6000);
     if (this.passo.tipo === 'saracinesca') this.fermo = true;
     this.pubblica();
   }
@@ -347,7 +349,34 @@ export class Gioco {
     if (p.nastro) this.vista.telecomando.nastro = g;
   }
 
+  modelliArrivati() {
+    const gia = this._alza;
+    this._alza = true;
+    this.torciaPronta = true;
+    this.ui.alzaPronta();
+    this.applicaProgresso();
+    if (!gia && this.passo.tipo !== 'saracinesca') {
+      this.preparaPasso(this.progressoGesto > 0.02 || this.parziali.length > 0);
+    }
+    this.pubblica();
+    window.setTimeout(() => {
+      try {
+        this.scena.ritratto = this.scena.catturaEttore();
+        this.ui.ritratto?.(this.scena.ritratto);
+      } catch (errore) {
+        console.error(errore);
+      }
+    }, 0);
+  }
+
+  sbloccaAlza(motivo) {
+    if (this._alza) return;
+    if (motivo) console.warn(`caricamento: ${motivo}`);
+    this.modelliArrivati();
+  }
+
   aggiorna(dt) {
+    if (!this._alza && performance.now() >= this._scadenzaAlza) this.sbloccaAlza('tempo 6 s');
     this.pausa = this.ePausa();
     this.ui.paesaggio(this.pausa);
     if (this.pausa) {
