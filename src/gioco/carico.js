@@ -38,6 +38,14 @@ export function registraScheda(testo) {
   disegna();
 }
 
+/** Causa vera, in console e sulla riga ?debug=1. Non è il messaggio per il giocatore. */
+export function registraCausa(testo) {
+  const riga = `causa ${testo}`;
+  righe.push(riga);
+  console.error(riga);
+  disegna();
+}
+
 function conTempo(promise, ms) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('tempo scaduto')), ms);

@@ -35,20 +35,22 @@ button { font: inherit; color: inherit; }
   width: 44px; height: 44px; opacity: 0.4; border: 0; background: transparent; color: var(--inchiostro);
 }
 #chi-parla {
-  position: absolute; z-index: 16; top: calc(var(--safe-top) + 8px); left: 12px;
-  display: flex; align-items: center; gap: 8px; pointer-events: none;
+  position: absolute; z-index: 16; top: calc(var(--safe-top) + 8px); left: 12px; right: 60px;
+  height: 44px; display: flex; align-items: center; gap: 8px; pointer-events: none;
 }
 #medaglione {
-  width: 40px; height: 40px; border-radius: 50%;
+  width: 40px; height: 40px; flex: none; border-radius: 50%; overflow: hidden;
   border: 3px solid #3c291c; background: #f4d2c0 center/cover no-repeat;
   box-shadow: 0 3px 0 #e2b79e;
 }
+#medaglione svg { display: block; }
+#medaglione.foto svg { display: none; }
 #etichetta {
   margin: 0; font-size: 12px; font-weight: 900; letter-spacing: 0.14em;
   text-transform: uppercase; color: #9a5f38;
 }
 #bolla {
-  position: absolute; z-index: 15; top: calc(var(--safe-top) + 56px); left: 16px; right: 72px;
+  position: absolute; z-index: 15; top: calc(var(--safe-top) + 60px); left: 12px; right: 12px;
   background: #fff6ea; border: 0; border-radius: 20px;
   padding: 12px 16px; min-height: 44px;
   box-shadow: 0 3px 0 #e2b79e, 0 10px 24px #9a5f3826;

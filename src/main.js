@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import './stile.css';
 import { AudioBottega } from './gioco/audio.js';
+import { registraCausa } from './gioco/carico.js';
 import { Gioco } from './gioco/Gioco.js';
 import { Interfaccia } from './gioco/interfaccia.js';
-import { Scena } from './gioco/scena.js';
+import { ErroreWebGL, Scena } from './gioco/scena.js';
 
 const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
 
@@ -22,8 +23,8 @@ const app = document.querySelector('#app');
 const canvas = document.querySelector('#vista');
 document.querySelector('#timbro').textContent = timbro(__COMMIT_SHA__, __BUILD_DATE__);
 
-function mostraErrore3d() {
-  console.error('Questo telefono non riesce ad aprire la bottega in 3D.');
+function mostraErrore3d(causa) {
+  if (causa) registraCausa(causa);
   const maniglia = document.querySelector('#maniglia');
   if (maniglia) {
     maniglia.dataset.stato = 'errore';
@@ -39,22 +40,24 @@ function mostraErrore3d() {
   nodo.textContent = 'Questo telefono non riesce ad aprire la bottega in 3D.';
 }
 
-canvas.addEventListener('webglcontextlost', (evento) => {
-  evento.preventDefault();
-  mostraErrore3d();
-});
-
 let scena;
 try {
   scena = new Scena(canvas);
 } catch (errore) {
-  app.dataset.pronto = '0';
   console.error(errore);
-  mostraErrore3d();
   scena = null;
+  if (errore instanceof ErroreWebGL) {
+    app.dataset.pronto = '0';
+    mostraErrore3d(errore.message);
+  } else {
+    registraCausa(errore?.message || String(errore));
+  }
 }
 
 if (scena) {
+  scena.canvas.addEventListener('webglcontextlost', (evento) => {
+    registraCausa(`contesto perso ${evento.statusMessage || ''}`.trim());
+  });
   const audio = new AudioBottega();
   const gioco = new Gioco({
     app,

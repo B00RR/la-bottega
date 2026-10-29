@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { clona } from './mondo.js';
-import { limitaTexture } from './carico.js';
+import { limitaTexture, registraCausa } from './carico.js';
 import { caricaEttore, caricaSet, clonaMateriale, creaBottega, creaEttore, creaTelecomando, indicizza, pittura, sistemaEttore } from './modelli.js';
 import { creaPedana, RegiaEttore } from './ettore.js';
 import { montaTorcia, posaTappo } from './torcia.js';
@@ -15,6 +15,42 @@ const POSE_TORCIA = {
 
 const APERTURA_GUSCIO = 160 * Math.PI / 180;
 const APERTURA_CASSETTO = 0.075;
+
+export class ErroreWebGL extends Error {
+  constructor(causa) {
+    super(causa);
+    this.name = 'ErroreWebGL';
+  }
+}
+
+/** webgl2 con attributi sicuri. Three r186 non usa webgl1: se il primo tentativo avvelena il canvas, se ne fa un altro. */
+function creaRenderer(canvas) {
+  const attributi = {
+    antialias: false,
+    alpha: false,
+    stencil: false,
+    powerPreference: 'default',
+    failIfMajorPerformanceCaveat: false,
+  };
+  const note = [];
+  const prova = (bersaglio) => new THREE.WebGLRenderer({ canvas: bersaglio, ...attributi });
+  try {
+    return { renderer: prova(canvas), canvas, attributi };
+  } catch (errore) {
+    note.push(errore.message);
+    registraCausa(errore.message);
+  }
+  const fresco = canvas.cloneNode(false);
+  fresco.id = 'vista';
+  canvas.replaceWith(fresco);
+  try {
+    return { renderer: prova(fresco), canvas: fresco, attributi };
+  } catch (errore) {
+    note.push(errore.message);
+    registraCausa(errore.message);
+    throw new ErroreWebGL(note.join(' | '));
+  }
+}
 
 const INQUADRATURE = {
   PORTA: { nodo: 'Soglia', dist: 1.55, alza: 0.62 },
@@ -43,17 +79,11 @@ function smussa(attuale, meta, dt, k) {
 
 export class Scena {
   constructor(canvas) {
-    this.canvas = canvas;
-    const dito = (navigator.maxTouchPoints || 0) > 0
-      || (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches);
-    this._antialias = !dito;
-    this.renderer = new THREE.WebGLRenderer({
-      canvas,
-      antialias: this._antialias,
-      alpha: false,
-      powerPreference: 'high-performance',
-      stencil: false,
-    });
+    const creato = creaRenderer(canvas);
+    this.canvas = creato.canvas;
+    this._antialias = false;
+    this._attributi = creato.attributi;
+    this.renderer = creato.renderer;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
@@ -62,13 +92,14 @@ export class Scena {
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.shadowMap.autoUpdate = false;
     this.renderer.shadowMap.needsUpdate = true;
-    this.dprMassimo = Math.min(window.devicePixelRatio || 1, 1.5);
+    this.dprMassimo = Math.min(window.devicePixelRatio || 1, 2);
     const gl = this.renderer.getContext();
     const infoGpu = gl.getExtension('WEBGL_debug_renderer_info');
     const gpu = infoGpu ? gl.getParameter(infoGpu.UNMASKED_RENDERER_WEBGL) : '';
     const maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 0;
     this.tettoTexture = Math.min(2048, maxTex || 2048);
-    this.scheda = `gpu ${gpu || 'n/d'} · dpr ${window.devicePixelRatio || 1}→${this.dprMassimo} · maxTex ${maxTex} · aa ${this._antialias ? 'sì' : 'no'}`;
+    const attrs = Object.entries(this._attributi).map(([k, v]) => `${k}=${v}`).join(',');
+    this.scheda = `gpu ${gpu || 'n/d'} · dpr ${window.devicePixelRatio || 1}→${this.dprMassimo} · maxTex ${maxTex} · aa no · ${attrs}`;
     this.dpr = this.dprMassimo;
     this.tempi = [];
     this.buoni = 0;
@@ -102,10 +133,14 @@ export class Scena {
     this.orlo = new THREE.PointLight('#fff6ea', 2.6, 0.7, 2);
     this.orlo.position.set(-0.02, 0.58, -0.62);
     this.scene.add(this.hemi, this.sole, this.sole.target, this.taglio, this.orlo);
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    this.scene.environmentIntensity = 0.35;
-    pmrem.dispose();
+    try {
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      this.scene.environmentIntensity = 0.35;
+      pmrem.dispose();
+    } catch (errore) {
+      registraCausa(`ambiente ${errore.message}`);
+    }
 
     this.nodi = new Map();
     const bottega = creaBottega();
@@ -1020,13 +1055,12 @@ export class Scena {
       altri.forEach((n) => { n.visible = false; });
       this.scene.background = new THREE.Color('#f4d2c0');
       this.scene.fog = null;
-      const ombre = this.renderer.shadowMap.needsUpdate;
-      this.renderer.shadowMap.needsUpdate = true;
+      const gl = this.renderer.getContext();
+      if (gl.isContextLost()) return '';
       this.renderer.setRenderTarget(rt);
       this.renderer.render(this.scene, cam);
       this.renderer.readRenderTargetPixels(rt, 0, 0, 120, 120, buf);
       this.renderer.setRenderTarget(null);
-      this.renderer.shadowMap.needsUpdate = ombre;
       let pieni = 0;
       for (let i = 0; i < buf.length; i += 16) {
         if (buf[i + 3] > 0 && (Math.abs(buf[i] - 244) > 18 || Math.abs(buf[i + 1] - 210) > 18)) pieni += 1;
@@ -1045,8 +1079,7 @@ export class Scena {
       }
       ctx.putImageData(immagine, 0, 0);
       const url = tela.toDataURL('image/png');
-      const medaglione = document.querySelector('#medaglione');
-      if (medaglione) medaglione.style.backgroundImage = `url("${url}")`;
+      if (!url.startsWith('data:image/png') || url.length < 64) return '';
       return url;
     } catch (err) {
       console.warn('ritratto', err);

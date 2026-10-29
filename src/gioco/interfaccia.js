@@ -302,9 +302,15 @@ export class Interfaccia {
   }
 
   ritrato(url) {
-    if (!url) return;
     const nodo = this.app.querySelector('#medaglione');
-    if (nodo) nodo.style.backgroundImage = `url("${url}")`;
+    if (!nodo) return;
+    if (typeof url === 'string' && url.startsWith('data:image/') && url.length > 64) {
+      nodo.style.backgroundImage = `url("${url}")`;
+      nodo.classList.add('foto');
+      return;
+    }
+    nodo.style.backgroundImage = '';
+    nodo.classList.remove('foto');
   }
 
   /** Rettangoli visibili che si toccano, testo della bolla coperto, Chiudi fuori carta. */
